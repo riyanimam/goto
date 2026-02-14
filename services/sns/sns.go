@@ -24,7 +24,7 @@ const defaultAccountID = "123456789012"
 // Service implements the SNS mock.
 type Service struct {
 	mu            sync.RWMutex
-	topics        map[string]*topic // keyed by ARN
+	topics        map[string]*topic        // keyed by ARN
 	subscriptions map[string]*subscription // keyed by subscription ARN
 }
 

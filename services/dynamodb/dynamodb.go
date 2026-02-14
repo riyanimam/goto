@@ -450,8 +450,8 @@ func (s *Service) tableDescription(t *table) map[string]interface{} {
 
 	if t.billingMode == "PROVISIONED" {
 		desc["ProvisionedThroughput"] = map[string]interface{}{
-			"ReadCapacityUnits":  t.provisionedRead,
-			"WriteCapacityUnits": t.provisionedWrite,
+			"ReadCapacityUnits":      t.provisionedRead,
+			"WriteCapacityUnits":     t.provisionedWrite,
 			"NumberOfDecreasesToday": 0,
 		}
 	}

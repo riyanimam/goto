@@ -164,11 +164,11 @@ func (s *Service) getSecretValue(w http.ResponseWriter, params map[string]interf
 	}
 
 	resp := map[string]interface{}{
-		"ARN":            sec.arn,
-		"Name":           sec.name,
-		"VersionId":      sec.versionID,
-		"CreatedDate":    float64(sec.created.Unix()),
-		"VersionStages":  []string{"AWSCURRENT"},
+		"ARN":           sec.arn,
+		"Name":          sec.name,
+		"VersionId":     sec.versionID,
+		"CreatedDate":   float64(sec.created.Unix()),
+		"VersionStages": []string{"AWSCURRENT"},
 	}
 	if sec.secretString != "" {
 		resp["SecretString"] = sec.secretString
@@ -238,11 +238,11 @@ func (s *Service) listSecrets(w http.ResponseWriter, _ map[string]interface{}) {
 			continue
 		}
 		secretList = append(secretList, map[string]interface{}{
-			"ARN":              sec.arn,
-			"Name":             sec.name,
-			"Description":      sec.description,
-			"CreatedDate":      float64(sec.created.Unix()),
-			"LastChangedDate":  float64(sec.lastChanged.Unix()),
+			"ARN":             sec.arn,
+			"Name":            sec.name,
+			"Description":     sec.description,
+			"CreatedDate":     float64(sec.created.Unix()),
+			"LastChangedDate": float64(sec.lastChanged.Unix()),
 		})
 	}
 	s.mu.RUnlock()
