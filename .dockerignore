@@ -1,7 +1,0 @@
-# Ignore everything by default
-*
-
-!README.md
-!moto/
-!setup.cfg
-!setup.py
