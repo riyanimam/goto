@@ -7,13 +7,20 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	cwtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	cwltypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
+	"github.com/aws/aws-sdk-go-v2/service/ecs"
+	ecstypes "github.com/aws/aws-sdk-go-v2/service/ecs/types"
+	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
+	elbv2types "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2/types"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 	ebtypes "github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -21,8 +28,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	lambdatypes "github.com/aws/aws-sdk-go-v2/service/lambda/types"
+	"github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/aws/aws-sdk-go-v2/service/route53"
+	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/sesv2"
+	sesv2types "github.com/aws/aws-sdk-go-v2/service/sesv2/types"
+	"github.com/aws/aws-sdk-go-v2/service/sfn"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
@@ -1788,5 +1801,733 @@ func TestECRRepositoryOperations(t *testing.T) {
 	}
 	if len(descResp.Repositories) != 0 {
 		t.Errorf("expected 0 repositories after delete, got %d", len(descResp.Repositories))
+	}
+}
+
+// ─── Route 53 ───────────────────────────────────────────────────────────────
+
+func TestRoute53HostedZoneOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := route53.NewFromConfig(cfg)
+
+	// Create hosted zone.
+	createResp, err := client.CreateHostedZone(ctx, &route53.CreateHostedZoneInput{
+		Name:            aws.String("example.com."),
+		CallerReference: aws.String("unique-ref-1"),
+	})
+	if err != nil {
+		t.Fatalf("CreateHostedZone: %v", err)
+	}
+	if createResp.HostedZone == nil {
+		t.Fatal("expected HostedZone in response")
+	}
+	zoneID := createResp.HostedZone.Id
+	// Extract just the zone ID (remove /hostedzone/ prefix).
+	zoneIDStr := *zoneID
+	if idx := strings.LastIndex(zoneIDStr, "/"); idx >= 0 {
+		zoneIDStr = zoneIDStr[idx+1:]
+	}
+
+	// List hosted zones.
+	listResp, err := client.ListHostedZones(ctx, &route53.ListHostedZonesInput{})
+	if err != nil {
+		t.Fatalf("ListHostedZones: %v", err)
+	}
+	if len(listResp.HostedZones) != 1 {
+		t.Fatalf("expected 1 zone, got %d", len(listResp.HostedZones))
+	}
+
+	// Change resource record sets (add an A record).
+	_, err = client.ChangeResourceRecordSets(ctx, &route53.ChangeResourceRecordSetsInput{
+		HostedZoneId: aws.String(zoneIDStr),
+		ChangeBatch: &r53types.ChangeBatch{
+			Changes: []r53types.Change{
+				{
+					Action: r53types.ChangeActionCreate,
+					ResourceRecordSet: &r53types.ResourceRecordSet{
+						Name: aws.String("app.example.com."),
+						Type: r53types.RRTypeA,
+						TTL:  aws.Int64(300),
+						ResourceRecords: []r53types.ResourceRecord{
+							{Value: aws.String("1.2.3.4")},
+						},
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("ChangeResourceRecordSets: %v", err)
+	}
+
+	// List resource record sets.
+	rrsResp, err := client.ListResourceRecordSets(ctx, &route53.ListResourceRecordSetsInput{
+		HostedZoneId: aws.String(zoneIDStr),
+	})
+	if err != nil {
+		t.Fatalf("ListResourceRecordSets: %v", err)
+	}
+	// Should have NS + SOA + our new A record.
+	if len(rrsResp.ResourceRecordSets) < 3 {
+		t.Errorf("expected at least 3 record sets, got %d", len(rrsResp.ResourceRecordSets))
+	}
+
+	// Delete hosted zone.
+	_, err = client.DeleteHostedZone(ctx, &route53.DeleteHostedZoneInput{
+		Id: aws.String(zoneIDStr),
+	})
+	if err != nil {
+		t.Fatalf("DeleteHostedZone: %v", err)
+	}
+
+	// Verify it's gone.
+	listResp, err = client.ListHostedZones(ctx, &route53.ListHostedZonesInput{})
+	if err != nil {
+		t.Fatalf("ListHostedZones after delete: %v", err)
+	}
+	if len(listResp.HostedZones) != 0 {
+		t.Errorf("expected 0 zones after delete, got %d", len(listResp.HostedZones))
+	}
+}
+
+// ─── ECS ────────────────────────────────────────────────────────────────────
+
+func TestECSClusterAndServiceOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := ecs.NewFromConfig(cfg)
+
+	// Create cluster.
+	clusterResp, err := client.CreateCluster(ctx, &ecs.CreateClusterInput{
+		ClusterName: aws.String("test-cluster"),
+	})
+	if err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+	if *clusterResp.Cluster.ClusterName != "test-cluster" {
+		t.Errorf("expected cluster name 'test-cluster', got %q", *clusterResp.Cluster.ClusterName)
+	}
+
+	// List clusters.
+	listResp, err := client.ListClusters(ctx, &ecs.ListClustersInput{})
+	if err != nil {
+		t.Fatalf("ListClusters: %v", err)
+	}
+	if len(listResp.ClusterArns) != 1 {
+		t.Fatalf("expected 1 cluster, got %d", len(listResp.ClusterArns))
+	}
+
+	// Register task definition.
+	tdResp, err := client.RegisterTaskDefinition(ctx, &ecs.RegisterTaskDefinitionInput{
+		Family: aws.String("my-task"),
+		ContainerDefinitions: []ecstypes.ContainerDefinition{
+			{
+				Name:   aws.String("web"),
+				Image:  aws.String("nginx:latest"),
+				Cpu:    256,
+				Memory: aws.Int32(512),
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("RegisterTaskDefinition: %v", err)
+	}
+	if *tdResp.TaskDefinition.Family != "my-task" {
+		t.Errorf("expected family 'my-task', got %q", *tdResp.TaskDefinition.Family)
+	}
+	tdArn := tdResp.TaskDefinition.TaskDefinitionArn
+
+	// Create service.
+	svcResp, err := client.CreateService(ctx, &ecs.CreateServiceInput{
+		ServiceName:    aws.String("web-service"),
+		Cluster:        aws.String("test-cluster"),
+		TaskDefinition: tdArn,
+		DesiredCount:   aws.Int32(2),
+	})
+	if err != nil {
+		t.Fatalf("CreateService: %v", err)
+	}
+	if *svcResp.Service.ServiceName != "web-service" {
+		t.Errorf("expected service name 'web-service', got %q", *svcResp.Service.ServiceName)
+	}
+	if svcResp.Service.DesiredCount != 2 {
+		t.Errorf("expected desired count 2, got %d", svcResp.Service.DesiredCount)
+	}
+
+	// List services.
+	svcListResp, err := client.ListServices(ctx, &ecs.ListServicesInput{
+		Cluster: aws.String("test-cluster"),
+	})
+	if err != nil {
+		t.Fatalf("ListServices: %v", err)
+	}
+	if len(svcListResp.ServiceArns) != 1 {
+		t.Errorf("expected 1 service, got %d", len(svcListResp.ServiceArns))
+	}
+
+	// Delete service.
+	_, err = client.DeleteService(ctx, &ecs.DeleteServiceInput{
+		Service: aws.String("web-service"),
+		Cluster: aws.String("test-cluster"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteService: %v", err)
+	}
+
+	// Delete cluster.
+	_, err = client.DeleteCluster(ctx, &ecs.DeleteClusterInput{
+		Cluster: aws.String("test-cluster"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteCluster: %v", err)
+	}
+}
+
+// ─── ELBv2 ──────────────────────────────────────────────────────────────────
+
+func TestELBv2LoadBalancerOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := elasticloadbalancingv2.NewFromConfig(cfg)
+
+	// Create load balancer.
+	lbResp, err := client.CreateLoadBalancer(ctx, &elasticloadbalancingv2.CreateLoadBalancerInput{
+		Name: aws.String("test-lb"),
+	})
+	if err != nil {
+		t.Fatalf("CreateLoadBalancer: %v", err)
+	}
+	if len(lbResp.LoadBalancers) != 1 {
+		t.Fatalf("expected 1 load balancer, got %d", len(lbResp.LoadBalancers))
+	}
+	lbArn := lbResp.LoadBalancers[0].LoadBalancerArn
+
+	// Create target group.
+	tgResp, err := client.CreateTargetGroup(ctx, &elasticloadbalancingv2.CreateTargetGroupInput{
+		Name:     aws.String("test-tg"),
+		Protocol: elbv2types.ProtocolEnumHttp,
+		Port:     aws.Int32(80),
+	})
+	if err != nil {
+		t.Fatalf("CreateTargetGroup: %v", err)
+	}
+	if len(tgResp.TargetGroups) != 1 {
+		t.Fatalf("expected 1 target group, got %d", len(tgResp.TargetGroups))
+	}
+	tgArn := tgResp.TargetGroups[0].TargetGroupArn
+
+	// Create listener.
+	lnResp, err := client.CreateListener(ctx, &elasticloadbalancingv2.CreateListenerInput{
+		LoadBalancerArn: lbArn,
+		Protocol:        elbv2types.ProtocolEnumHttp,
+		Port:            aws.Int32(80),
+		DefaultActions: []elbv2types.Action{
+			{Type: elbv2types.ActionTypeEnumForward, TargetGroupArn: tgArn},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateListener: %v", err)
+	}
+	if len(lnResp.Listeners) != 1 {
+		t.Fatalf("expected 1 listener, got %d", len(lnResp.Listeners))
+	}
+
+	// Describe load balancers.
+	descLBResp, err := client.DescribeLoadBalancers(ctx, &elasticloadbalancingv2.DescribeLoadBalancersInput{})
+	if err != nil {
+		t.Fatalf("DescribeLoadBalancers: %v", err)
+	}
+	if len(descLBResp.LoadBalancers) != 1 {
+		t.Errorf("expected 1 LB, got %d", len(descLBResp.LoadBalancers))
+	}
+
+	// Describe target groups.
+	descTGResp, err := client.DescribeTargetGroups(ctx, &elasticloadbalancingv2.DescribeTargetGroupsInput{})
+	if err != nil {
+		t.Fatalf("DescribeTargetGroups: %v", err)
+	}
+	if len(descTGResp.TargetGroups) != 1 {
+		t.Errorf("expected 1 TG, got %d", len(descTGResp.TargetGroups))
+	}
+
+	// Clean up.
+	_, _ = client.DeleteTargetGroup(ctx, &elasticloadbalancingv2.DeleteTargetGroupInput{
+		TargetGroupArn: tgArn,
+	})
+	_, _ = client.DeleteLoadBalancer(ctx, &elasticloadbalancingv2.DeleteLoadBalancerInput{
+		LoadBalancerArn: lbArn,
+	})
+
+	// Verify LBs are gone.
+	descLBResp, err = client.DescribeLoadBalancers(ctx, &elasticloadbalancingv2.DescribeLoadBalancersInput{})
+	if err != nil {
+		t.Fatalf("DescribeLoadBalancers after delete: %v", err)
+	}
+	if len(descLBResp.LoadBalancers) != 0 {
+		t.Errorf("expected 0 LBs after delete, got %d", len(descLBResp.LoadBalancers))
+	}
+}
+
+// ─── RDS ────────────────────────────────────────────────────────────────────
+
+func TestRDSInstanceOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := rds.NewFromConfig(cfg)
+
+	// Create DB instance.
+	createResp, err := client.CreateDBInstance(ctx, &rds.CreateDBInstanceInput{
+		DBInstanceIdentifier: aws.String("test-db"),
+		DBInstanceClass:      aws.String("db.t3.micro"),
+		Engine:               aws.String("mysql"),
+		MasterUsername:       aws.String("admin"),
+		MasterUserPassword:   aws.String("password123"),
+	})
+	if err != nil {
+		t.Fatalf("CreateDBInstance: %v", err)
+	}
+	if *createResp.DBInstance.DBInstanceIdentifier != "test-db" {
+		t.Errorf("expected identifier 'test-db', got %q", *createResp.DBInstance.DBInstanceIdentifier)
+	}
+	if *createResp.DBInstance.Engine != "mysql" {
+		t.Errorf("expected engine 'mysql', got %q", *createResp.DBInstance.Engine)
+	}
+
+	// Describe DB instances.
+	descResp, err := client.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{})
+	if err != nil {
+		t.Fatalf("DescribeDBInstances: %v", err)
+	}
+	if len(descResp.DBInstances) != 1 {
+		t.Fatalf("expected 1 instance, got %d", len(descResp.DBInstances))
+	}
+
+	// Modify DB instance.
+	modResp, err := client.ModifyDBInstance(ctx, &rds.ModifyDBInstanceInput{
+		DBInstanceIdentifier: aws.String("test-db"),
+		DBInstanceClass:      aws.String("db.t3.medium"),
+	})
+	if err != nil {
+		t.Fatalf("ModifyDBInstance: %v", err)
+	}
+	if *modResp.DBInstance.DBInstanceClass != "db.t3.medium" {
+		t.Errorf("expected class 'db.t3.medium', got %q", *modResp.DBInstance.DBInstanceClass)
+	}
+
+	// Delete DB instance.
+	_, err = client.DeleteDBInstance(ctx, &rds.DeleteDBInstanceInput{
+		DBInstanceIdentifier: aws.String("test-db"),
+		SkipFinalSnapshot:    aws.Bool(true),
+	})
+	if err != nil {
+		t.Fatalf("DeleteDBInstance: %v", err)
+	}
+
+	// Verify empty.
+	descResp, err = client.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{})
+	if err != nil {
+		t.Fatalf("DescribeDBInstances after delete: %v", err)
+	}
+	if len(descResp.DBInstances) != 0 {
+		t.Errorf("expected 0 instances after delete, got %d", len(descResp.DBInstances))
+	}
+}
+
+func TestRDSClusterOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := rds.NewFromConfig(cfg)
+
+	// Create DB cluster.
+	createResp, err := client.CreateDBCluster(ctx, &rds.CreateDBClusterInput{
+		DBClusterIdentifier: aws.String("test-cluster"),
+		Engine:              aws.String("aurora-mysql"),
+		MasterUsername:      aws.String("admin"),
+		MasterUserPassword:  aws.String("password123"),
+	})
+	if err != nil {
+		t.Fatalf("CreateDBCluster: %v", err)
+	}
+	if *createResp.DBCluster.DBClusterIdentifier != "test-cluster" {
+		t.Errorf("expected identifier 'test-cluster', got %q", *createResp.DBCluster.DBClusterIdentifier)
+	}
+
+	// Describe DB clusters.
+	descResp, err := client.DescribeDBClusters(ctx, &rds.DescribeDBClustersInput{})
+	if err != nil {
+		t.Fatalf("DescribeDBClusters: %v", err)
+	}
+	if len(descResp.DBClusters) != 1 {
+		t.Fatalf("expected 1 cluster, got %d", len(descResp.DBClusters))
+	}
+
+	// Delete DB cluster.
+	_, err = client.DeleteDBCluster(ctx, &rds.DeleteDBClusterInput{
+		DBClusterIdentifier: aws.String("test-cluster"),
+		SkipFinalSnapshot:   aws.Bool(true),
+	})
+	if err != nil {
+		t.Fatalf("DeleteDBCluster: %v", err)
+	}
+}
+
+// ─── CloudWatch (metrics) ───────────────────────────────────────────────────
+
+func TestCloudWatchMetricOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := cloudwatch.NewFromConfig(cfg)
+
+	// Put metric data.
+	_, err = client.PutMetricData(ctx, &cloudwatch.PutMetricDataInput{
+		Namespace: aws.String("MyApp"),
+		MetricData: []cwtypes.MetricDatum{
+			{
+				MetricName: aws.String("RequestCount"),
+				Value:      aws.Float64(42.0),
+				Unit:       cwtypes.StandardUnitCount,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("PutMetricData: %v", err)
+	}
+
+	// List metrics.
+	listResp, err := client.ListMetrics(ctx, &cloudwatch.ListMetricsInput{
+		Namespace: aws.String("MyApp"),
+	})
+	if err != nil {
+		t.Fatalf("ListMetrics: %v", err)
+	}
+	if len(listResp.Metrics) != 1 {
+		t.Fatalf("expected 1 metric, got %d", len(listResp.Metrics))
+	}
+	if *listResp.Metrics[0].MetricName != "RequestCount" {
+		t.Errorf("expected metric name 'RequestCount', got %q", *listResp.Metrics[0].MetricName)
+	}
+
+	// Put metric alarm.
+	_, err = client.PutMetricAlarm(ctx, &cloudwatch.PutMetricAlarmInput{
+		AlarmName:          aws.String("HighRequestCount"),
+		Namespace:          aws.String("MyApp"),
+		MetricName:         aws.String("RequestCount"),
+		ComparisonOperator: cwtypes.ComparisonOperatorGreaterThanThreshold,
+		Threshold:          aws.Float64(100),
+		Period:             aws.Int32(300),
+		EvaluationPeriods:  aws.Int32(1),
+		Statistic:          cwtypes.StatisticAverage,
+	})
+	if err != nil {
+		t.Fatalf("PutMetricAlarm: %v", err)
+	}
+
+	// Describe alarms.
+	alarmResp, err := client.DescribeAlarms(ctx, &cloudwatch.DescribeAlarmsInput{})
+	if err != nil {
+		t.Fatalf("DescribeAlarms: %v", err)
+	}
+	if len(alarmResp.MetricAlarms) != 1 {
+		t.Fatalf("expected 1 alarm, got %d", len(alarmResp.MetricAlarms))
+	}
+	if *alarmResp.MetricAlarms[0].AlarmName != "HighRequestCount" {
+		t.Errorf("expected alarm name 'HighRequestCount', got %q", *alarmResp.MetricAlarms[0].AlarmName)
+	}
+
+	// Delete alarms.
+	_, err = client.DeleteAlarms(ctx, &cloudwatch.DeleteAlarmsInput{
+		AlarmNames: []string{"HighRequestCount"},
+	})
+	if err != nil {
+		t.Fatalf("DeleteAlarms: %v", err)
+	}
+
+	// Verify empty.
+	alarmResp, err = client.DescribeAlarms(ctx, &cloudwatch.DescribeAlarmsInput{})
+	if err != nil {
+		t.Fatalf("DescribeAlarms after delete: %v", err)
+	}
+	if len(alarmResp.MetricAlarms) != 0 {
+		t.Errorf("expected 0 alarms after delete, got %d", len(alarmResp.MetricAlarms))
+	}
+}
+
+// ─── Step Functions ─────────────────────────────────────────────────────────
+
+func TestStepFunctionsStateMachineOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := sfn.NewFromConfig(cfg)
+
+	// Create state machine.
+	definition := `{"StartAt": "Hello", "States": {"Hello": {"Type": "Pass", "End": true}}}`
+	createResp, err := client.CreateStateMachine(ctx, &sfn.CreateStateMachineInput{
+		Name:       aws.String("test-sm"),
+		Definition: aws.String(definition),
+		RoleArn:    aws.String("arn:aws:iam::123456789012:role/step-role"),
+	})
+	if err != nil {
+		t.Fatalf("CreateStateMachine: %v", err)
+	}
+	smArn := createResp.StateMachineArn
+	if smArn == nil || !strings.Contains(*smArn, "test-sm") {
+		t.Errorf("expected state machine ARN containing 'test-sm', got %v", smArn)
+	}
+
+	// Describe state machine.
+	descResp, err := client.DescribeStateMachine(ctx, &sfn.DescribeStateMachineInput{
+		StateMachineArn: smArn,
+	})
+	if err != nil {
+		t.Fatalf("DescribeStateMachine: %v", err)
+	}
+	if *descResp.Name != "test-sm" {
+		t.Errorf("expected name 'test-sm', got %q", *descResp.Name)
+	}
+	if *descResp.Definition != definition {
+		t.Errorf("definition mismatch")
+	}
+
+	// List state machines.
+	listResp, err := client.ListStateMachines(ctx, &sfn.ListStateMachinesInput{})
+	if err != nil {
+		t.Fatalf("ListStateMachines: %v", err)
+	}
+	if len(listResp.StateMachines) != 1 {
+		t.Fatalf("expected 1 state machine, got %d", len(listResp.StateMachines))
+	}
+
+	// Start execution.
+	execResp, err := client.StartExecution(ctx, &sfn.StartExecutionInput{
+		StateMachineArn: smArn,
+		Name:            aws.String("exec-1"),
+		Input:           aws.String(`{"key":"value"}`),
+	})
+	if err != nil {
+		t.Fatalf("StartExecution: %v", err)
+	}
+	execArn := execResp.ExecutionArn
+
+	// Describe execution.
+	descExecResp, err := client.DescribeExecution(ctx, &sfn.DescribeExecutionInput{
+		ExecutionArn: execArn,
+	})
+	if err != nil {
+		t.Fatalf("DescribeExecution: %v", err)
+	}
+	if *descExecResp.Name != "exec-1" {
+		t.Errorf("expected execution name 'exec-1', got %q", *descExecResp.Name)
+	}
+
+	// Stop execution.
+	_, err = client.StopExecution(ctx, &sfn.StopExecutionInput{
+		ExecutionArn: execArn,
+	})
+	if err != nil {
+		t.Fatalf("StopExecution: %v", err)
+	}
+
+	// Delete state machine.
+	_, err = client.DeleteStateMachine(ctx, &sfn.DeleteStateMachineInput{
+		StateMachineArn: smArn,
+	})
+	if err != nil {
+		t.Fatalf("DeleteStateMachine: %v", err)
+	}
+
+	// Verify empty.
+	listResp, err = client.ListStateMachines(ctx, &sfn.ListStateMachinesInput{})
+	if err != nil {
+		t.Fatalf("ListStateMachines after delete: %v", err)
+	}
+	if len(listResp.StateMachines) != 0 {
+		t.Errorf("expected 0 state machines, got %d", len(listResp.StateMachines))
+	}
+}
+
+// ─── ACM ────────────────────────────────────────────────────────────────────
+
+func TestACMCertificateOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := acm.NewFromConfig(cfg)
+
+	// Request certificate.
+	reqResp, err := client.RequestCertificate(ctx, &acm.RequestCertificateInput{
+		DomainName: aws.String("example.com"),
+	})
+	if err != nil {
+		t.Fatalf("RequestCertificate: %v", err)
+	}
+	certArn := reqResp.CertificateArn
+	if certArn == nil || *certArn == "" {
+		t.Fatal("expected non-empty certificate ARN")
+	}
+
+	// Describe certificate.
+	descResp, err := client.DescribeCertificate(ctx, &acm.DescribeCertificateInput{
+		CertificateArn: certArn,
+	})
+	if err != nil {
+		t.Fatalf("DescribeCertificate: %v", err)
+	}
+	if *descResp.Certificate.DomainName != "example.com" {
+		t.Errorf("expected domain 'example.com', got %q", *descResp.Certificate.DomainName)
+	}
+
+	// List certificates.
+	listResp, err := client.ListCertificates(ctx, &acm.ListCertificatesInput{})
+	if err != nil {
+		t.Fatalf("ListCertificates: %v", err)
+	}
+	if len(listResp.CertificateSummaryList) != 1 {
+		t.Fatalf("expected 1 certificate, got %d", len(listResp.CertificateSummaryList))
+	}
+
+	// Delete certificate.
+	_, err = client.DeleteCertificate(ctx, &acm.DeleteCertificateInput{
+		CertificateArn: certArn,
+	})
+	if err != nil {
+		t.Fatalf("DeleteCertificate: %v", err)
+	}
+
+	// Verify empty.
+	listResp, err = client.ListCertificates(ctx, &acm.ListCertificatesInput{})
+	if err != nil {
+		t.Fatalf("ListCertificates after delete: %v", err)
+	}
+	if len(listResp.CertificateSummaryList) != 0 {
+		t.Errorf("expected 0 certs after delete, got %d", len(listResp.CertificateSummaryList))
+	}
+}
+
+// ─── SES ────────────────────────────────────────────────────────────────────
+
+func TestSESEmailOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := sesv2.NewFromConfig(cfg)
+
+	// Create email identity.
+	_, err = client.CreateEmailIdentity(ctx, &sesv2.CreateEmailIdentityInput{
+		EmailIdentity: aws.String("sender@example.com"),
+	})
+	if err != nil {
+		t.Fatalf("CreateEmailIdentity: %v", err)
+	}
+
+	// Get email identity.
+	getResp, err := client.GetEmailIdentity(ctx, &sesv2.GetEmailIdentityInput{
+		EmailIdentity: aws.String("sender@example.com"),
+	})
+	if err != nil {
+		t.Fatalf("GetEmailIdentity: %v", err)
+	}
+	if !getResp.VerifiedForSendingStatus {
+		t.Error("expected VerifiedForSendingStatus to be true")
+	}
+
+	// List email identities.
+	listResp, err := client.ListEmailIdentities(ctx, &sesv2.ListEmailIdentitiesInput{})
+	if err != nil {
+		t.Fatalf("ListEmailIdentities: %v", err)
+	}
+	if len(listResp.EmailIdentities) != 1 {
+		t.Fatalf("expected 1 identity, got %d", len(listResp.EmailIdentities))
+	}
+
+	// Send email.
+	sendResp, err := client.SendEmail(ctx, &sesv2.SendEmailInput{
+		FromEmailAddress: aws.String("sender@example.com"),
+		Destination: &sesv2types.Destination{
+			ToAddresses: []string{"recipient@example.com"},
+		},
+		Content: &sesv2types.EmailContent{
+			Simple: &sesv2types.Message{
+				Subject: &sesv2types.Content{Data: aws.String("Test Subject")},
+				Body: &sesv2types.Body{
+					Text: &sesv2types.Content{Data: aws.String("Test body")},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("SendEmail: %v", err)
+	}
+	if sendResp.MessageId == nil || *sendResp.MessageId == "" {
+		t.Error("expected non-empty MessageId")
+	}
+
+	// Delete identity.
+	_, err = client.DeleteEmailIdentity(ctx, &sesv2.DeleteEmailIdentityInput{
+		EmailIdentity: aws.String("sender@example.com"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteEmailIdentity: %v", err)
+	}
+
+	// Verify empty.
+	listResp, err = client.ListEmailIdentities(ctx, &sesv2.ListEmailIdentitiesInput{})
+	if err != nil {
+		t.Fatalf("ListEmailIdentities after delete: %v", err)
+	}
+	if len(listResp.EmailIdentities) != 0 {
+		t.Errorf("expected 0 identities after delete, got %d", len(listResp.EmailIdentities))
 	}
 }

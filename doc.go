@@ -39,6 +39,14 @@
 //   - KMS (Key Management Service)
 //   - CloudFormation
 //   - ECR (Elastic Container Registry)
+//   - Route 53 (DNS)
+//   - ECS (Elastic Container Service)
+//   - ELBv2 (Elastic Load Balancing v2)
+//   - RDS (Relational Database Service)
+//   - CloudWatch (Metrics and Alarms)
+//   - Step Functions
+//   - ACM (Certificate Manager)
+//   - SES v2 (Simple Email Service)
 //
 // Additional services can be added by implementing the [Service] interface.
 package awsmock

@@ -20,7 +20,7 @@ that uses the AWS SDK for Go v2 without making any real API calls.
 - **Thread-safe** — safe for parallel tests
 - **Pure Go** — no Python, no Docker, no external processes
 - **AWS SDK v2** — works with `github.com/aws/aws-sdk-go-v2`
-- **16 services** — broad coverage of the most commonly used AWS services
+- **24 services** — broad coverage of the most commonly used AWS services
 
 ## Supported Services
 
@@ -42,6 +42,14 @@ that uses the AWS SDK for Go v2 without making any real API calls.
 | **KMS** | CreateKey, DescribeKey, ListKeys, Encrypt, Decrypt, GenerateDataKey, CreateAlias, ListAliases, DeleteAlias, ScheduleKeyDeletion |
 | **CloudFormation** | CreateStack, DeleteStack, DescribeStacks, ListStacks, UpdateStack |
 | **ECR** | CreateRepository, DeleteRepository, DescribeRepositories, ListImages, PutImage, BatchGetImage, GetAuthorizationToken |
+| **Route 53** | CreateHostedZone, GetHostedZone, DeleteHostedZone, ListHostedZones, ChangeResourceRecordSets, ListResourceRecordSets |
+| **ECS** | CreateCluster, DeleteCluster, DescribeClusters, ListClusters, RegisterTaskDefinition, DeregisterTaskDefinition, ListTaskDefinitions, RunTask, StopTask, ListTasks, DescribeTasks, CreateService, DeleteService, UpdateService, ListServices, DescribeServices |
+| **ELBv2** | CreateLoadBalancer, DeleteLoadBalancer, DescribeLoadBalancers, CreateTargetGroup, DeleteTargetGroup, DescribeTargetGroups, RegisterTargets, DeregisterTargets, DescribeTargetHealth, CreateListener, DeleteListener, DescribeListeners |
+| **RDS** | CreateDBInstance, DeleteDBInstance, DescribeDBInstances, ModifyDBInstance, CreateDBCluster, DeleteDBCluster, DescribeDBClusters |
+| **CloudWatch** | PutMetricData, GetMetricData, ListMetrics, PutMetricAlarm, DescribeAlarms, DeleteAlarms |
+| **Step Functions** | CreateStateMachine, DeleteStateMachine, DescribeStateMachine, ListStateMachines, StartExecution, DescribeExecution, ListExecutions, StopExecution |
+| **ACM** | RequestCertificate, DescribeCertificate, ListCertificates, DeleteCertificate |
+| **SES v2** | CreateEmailIdentity, GetEmailIdentity, ListEmailIdentities, SendEmail, DeleteEmailIdentity |
 
 ## Installation
 
@@ -469,7 +477,10 @@ mock := awsmock.Start(t, awsmock.WithService(myCustomService))
 │   Secrets Manager, Lambda,       │
 │   CloudWatch Logs, IAM, EC2,     │
 │   Kinesis, EventBridge, SSM,     │
-│   KMS, CloudFormation, ECR       │
+│   KMS, CloudFormation, ECR,      │
+│   Route 53, ECS, ELBv2, RDS,    │
+│   CloudWatch, Step Functions,    │
+│   ACM, SES                       │
 │   (in-memory, thread-safe)       │
 └──────────────────────────────────┘
 ```
