@@ -1,39 +1,96 @@
-# Table of Contents
+# Contributing to goto
 
-- [Contributing code](#contributing-code)
-- [Development Guide](#development-guide)
-  * [TLDR](#tldr)
-  * [Linting](#linting)
-- [Maintainers](#maintainers)
+Thank you for your interest in contributing to `goto`! This guide will help you
+get started.
 
-# Contributing code
+## Development Setup
 
-Moto has a [Code of Conduct](https://github.com/getmoto/moto/blob/master/CODE_OF_CONDUCT.md), you can expect to be treated with respect at all times when interacting with this project.
+1. **Prerequisites**
+   - Go 1.22 or later
+   - Git
 
-# Development Guide
-Please see our documentation for information on how to contribute:
-https://docs.getmoto.org/en/latest/docs/contributing
+2. **Clone the repository**
+   ```bash
+   git clone https://github.com/riyanimam/goto.git
+   cd goto
+   ```
 
-## TLDR
+3. **Run tests**
+   ```bash
+   make test
+   ```
 
-Moto has a [Makefile](./Makefile) which has some helpful commands for getting set up.
-You should be able to run `make init` to install the dependencies and then `make test` to run the tests.
+## Adding a New AWS Service
 
-*NB. On first run, some tests might take a while to execute, especially the Lambda ones, because they may need to download a Docker image before they can execute.*
+Each AWS service is implemented as a separate package under `services/`. To add
+support for a new service:
 
-## Linting
+1. Create a new directory under `services/` (e.g., `services/dynamodb/`).
 
-Ensure that the correct version of ruff is installed (see `requirements-dev.txt`). Different versions of ruff will return different results.  
-Run `make lint` to verify whether your code confirms to the guidelines.  
-Use `make format` to automatically format your code, if it does not conform to `ruff`'s rules.
+2. Implement the `awsmock.Service` interface:
 
+   ```go
+   package dynamodb
 
-# Maintainers
+   import "net/http"
 
-## Releasing a new version of Moto
+   type Service struct {
+       // in-memory state
+   }
 
-* Ensure the CHANGELOG document mentions the new release, and lists all significant changes.
-* Go to the dedicated [Release Action](https://github.com/getmoto/moto/actions/workflows/release.yml) in our CI
-* Click 'Run workflow' on the top right
-* Provide the version you want to release
-* That's it - everything else is automated.
+   func New() *Service {
+       return &Service{}
+   }
+
+   func (s *Service) Name() string         { return "dynamodb" }
+   func (s *Service) Handler() http.Handler { return http.HandlerFunc(s.handle) }
+   func (s *Service) Reset()               { /* clear state */ }
+
+   func (s *Service) handle(w http.ResponseWriter, r *http.Request) {
+       // Parse request and return mock response
+   }
+   ```
+
+3. Register the service in `builtin.go`:
+
+   ```go
+   func builtinServices() []Service {
+       return []Service{
+           sts.New(),
+           s3.New(),
+           sqs.New(),
+           dynamodb.New(), // Add your service here
+       }
+   }
+   ```
+
+4. Add tests in `awsmock_test.go` using the real AWS SDK client.
+
+5. Update the README with the new service's supported operations.
+
+## Code Style
+
+- Follow standard Go conventions (`gofmt`, `go vet`).
+- Use `sync.RWMutex` for thread-safe state management.
+- Keep service implementations self-contained in their own packages.
+- Write table-driven tests where applicable.
+
+## Pull Requests
+
+1. Fork the repository and create a feature branch.
+2. Make your changes with clear commit messages.
+3. Ensure all tests pass: `make ci`
+4. Open a pull request with a description of your changes.
+
+## Reporting Issues
+
+Please open an issue on GitHub with:
+- A clear description of the problem
+- Steps to reproduce
+- Expected vs actual behavior
+- Go version and OS
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the
+Apache License 2.0.

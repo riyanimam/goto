@@ -1,65 +1,47 @@
-SHELL := /bin/bash
+.PHONY: all test test-race lint vet fmt ci clean tidy
 
-SERVICE_NAME = "default"
-TEST_NAMES = "*"
+# Default target runs all checks.
+all: ci
 
-ifeq ($(TEST_SERVER_MODE), true)
-	# Exclude parallel tests
-	TEST_EXCLUDE := --ignore tests/test_acm --ignore tests/test_amp --ignore tests/test_awslambda --ignore tests/test_batch --ignore tests/test_dynamodb --ignore tests/test_ec2 --ignore tests/test_s3/ --ignore tests/test_sqs
-	# Parallel tests will be run separate
-	PARALLEL_TESTS := ./tests/test_acm/ ./tests/test_acmpca/ ./tests/test_amp/ ./tests/test_awslambda ./tests/test_batch ./tests/test_dynamodb ./tests/test_ec2 ./tests/test_s3/ ./tests/test_sqs
-else
-	TEST_EXCLUDE := --ignore tests/test_batch --ignore tests/test_dynamodb --ignore tests/test_ec2 --ignore tests/test_s3/ --ignore tests/test_sqs
-	PARALLEL_TESTS := ./tests/test_batch ./tests/test_dynamodb ./tests/test_ec2 tests/test_s3/ ./tests/test_sqs
-endif
+# Run tests.
+test:
+go test -v -count=1 ./...
 
-init:
-	@pip install -e .
-	@pip install -r requirements-dev.txt
+# Run tests with race detector.
+test-race:
+go test -v -race -count=1 ./...
 
+# Run golangci-lint if available, otherwise fall back to go vet.
 lint:
-	@echo "Running ruff..."
-	ruff check moto tests
-	ruff format --check moto tests
-	@echo "Running MyPy..."
-	mypy --install-types --non-interactive
+@if command -v golangci-lint >/dev/null 2>&1; then \
+golangci-lint run ./...; \
+else \
+echo "golangci-lint not found, running go vet instead"; \
+go vet ./...; \
+fi
 
-format:
-	ruff format moto/ tests/
-	ruff check --fix moto/ tests/
+# Run go vet.
+vet:
+go vet ./...
 
-test-only:
-	rm -f .coverage
-	rm -rf cover
-	pytest -sv -rs --cov=moto --cov-report xml ./tests/ $(TEST_EXCLUDE)
-	# https://github.com/aws/aws-xray-sdk-python/issues/196 - Run these tests separately without Coverage enabled
-	pytest -sv -rs ./tests/test_xray
-	# Run tests that require a clean slate
-	pytest -sv --cov=moto --cov-report xml --cov-append ./tests/ -m requires_clean_slate
-	# Run parallel tests - except those that require a clean slate
-	MOTO_CALL_RESET_API=false pytest -sv --cov=moto --cov-report xml --cov-append -n 4 $(PARALLEL_TESTS) --dist loadscope -m "not requires_clean_slate"
+# Check formatting.
+fmt:
+@test -z "$$(gofmt -l .)" || (echo "Files need formatting:"; gofmt -l .; exit 1)
 
-test: lint test-only
+# Tidy dependencies.
+tidy:
+go mod tidy
 
-test_server:
-	@TEST_SERVER_MODE=true pytest -sv --cov=moto --cov-report xml ./tests/
+# Run all CI checks.
+ci: fmt vet test-race
 
-aws_managed_policies:
-	scripts/update_managed_policies.py
+# Generate test coverage report.
+coverage:
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out -o coverage.html
+@echo "Coverage report: coverage.html"
 
-implementation_coverage:
-	./scripts/implementation_coverage.py
-	git commit IMPLEMENTATION_COVERAGE.md -m "Updating implementation coverage" || true
-
-cloudformation_coverage:
-	./scripts/cloudformation_coverage.py
-	git commit CLOUDFORMATION_COVERAGE.md -m "Updating CloudFormation coverage" || true
-
-coverage: implementation_coverage cloudformation_coverage
-
-scaffold:
-	@pip install -r requirements-dev.txt > /dev/null
-	exec python scripts/scaffold.py
-
-int_test:
-	@./scripts/int_test.sh
+# Clean build artifacts.
+clean:
+rm -f coverage.out coverage.html
+go clean -testcache
