@@ -7,7 +7,11 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	dbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
@@ -500,5 +504,413 @@ func TestMockServerReset(t *testing.T) {
 	}
 	if len(listResp.Buckets) != 0 {
 		t.Errorf("expected 0 buckets after reset, got %d", len(listResp.Buckets))
+	}
+}
+
+// TestDynamoDBTableOperations tests create, describe, list, and delete table operations.
+func TestDynamoDBTableOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := dynamodb.NewFromConfig(cfg)
+
+	// Create table.
+	_, err = client.CreateTable(ctx, &dynamodb.CreateTableInput{
+		TableName: aws.String("test-table"),
+		KeySchema: []dbtypes.KeySchemaElement{
+			{AttributeName: aws.String("pk"), KeyType: dbtypes.KeyTypeHash},
+		},
+		AttributeDefinitions: []dbtypes.AttributeDefinition{
+			{AttributeName: aws.String("pk"), AttributeType: dbtypes.ScalarAttributeTypeS},
+		},
+		BillingMode: dbtypes.BillingModePayPerRequest,
+	})
+	if err != nil {
+		t.Fatalf("CreateTable: %v", err)
+	}
+
+	// Describe table.
+	descResp, err := client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
+		TableName: aws.String("test-table"),
+	})
+	if err != nil {
+		t.Fatalf("DescribeTable: %v", err)
+	}
+	if descResp.Table == nil || descResp.Table.TableName == nil {
+		t.Fatal("expected non-nil table description")
+	}
+	if *descResp.Table.TableName != "test-table" {
+		t.Errorf("expected table name test-table, got %s", *descResp.Table.TableName)
+	}
+	if descResp.Table.TableStatus != dbtypes.TableStatusActive {
+		t.Errorf("expected ACTIVE status, got %s", descResp.Table.TableStatus)
+	}
+
+	// List tables.
+	listResp, err := client.ListTables(ctx, &dynamodb.ListTablesInput{})
+	if err != nil {
+		t.Fatalf("ListTables: %v", err)
+	}
+	if len(listResp.TableNames) != 1 || listResp.TableNames[0] != "test-table" {
+		t.Errorf("expected [test-table], got %v", listResp.TableNames)
+	}
+
+	// Delete table.
+	_, err = client.DeleteTable(ctx, &dynamodb.DeleteTableInput{
+		TableName: aws.String("test-table"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteTable: %v", err)
+	}
+
+	// Verify it's gone.
+	listResp, err = client.ListTables(ctx, &dynamodb.ListTablesInput{})
+	if err != nil {
+		t.Fatalf("ListTables after delete: %v", err)
+	}
+	if len(listResp.TableNames) != 0 {
+		t.Errorf("expected 0 tables after delete, got %d", len(listResp.TableNames))
+	}
+}
+
+// TestDynamoDBItemOperations tests put, get, and delete item operations.
+func TestDynamoDBItemOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := dynamodb.NewFromConfig(cfg)
+
+	// Create table.
+	_, err = client.CreateTable(ctx, &dynamodb.CreateTableInput{
+		TableName: aws.String("items-table"),
+		KeySchema: []dbtypes.KeySchemaElement{
+			{AttributeName: aws.String("id"), KeyType: dbtypes.KeyTypeHash},
+		},
+		AttributeDefinitions: []dbtypes.AttributeDefinition{
+			{AttributeName: aws.String("id"), AttributeType: dbtypes.ScalarAttributeTypeS},
+		},
+		BillingMode: dbtypes.BillingModePayPerRequest,
+	})
+	if err != nil {
+		t.Fatalf("CreateTable: %v", err)
+	}
+
+	// Put item.
+	_, err = client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: aws.String("items-table"),
+		Item: map[string]dbtypes.AttributeValue{
+			"id":   &dbtypes.AttributeValueMemberS{Value: "item-1"},
+			"name": &dbtypes.AttributeValueMemberS{Value: "Test Item"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("PutItem: %v", err)
+	}
+
+	// Get item.
+	getResp, err := client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String("items-table"),
+		Key: map[string]dbtypes.AttributeValue{
+			"id": &dbtypes.AttributeValueMemberS{Value: "item-1"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("GetItem: %v", err)
+	}
+	if getResp.Item == nil {
+		t.Fatal("expected non-nil item")
+	}
+	if v, ok := getResp.Item["name"].(*dbtypes.AttributeValueMemberS); !ok || v.Value != "Test Item" {
+		t.Errorf("expected name 'Test Item', got %v", getResp.Item["name"])
+	}
+
+	// Scan items.
+	scanResp, err := client.Scan(ctx, &dynamodb.ScanInput{
+		TableName: aws.String("items-table"),
+	})
+	if err != nil {
+		t.Fatalf("Scan: %v", err)
+	}
+	if scanResp.Count != 1 {
+		t.Errorf("expected 1 item in scan, got %d", scanResp.Count)
+	}
+
+	// Delete item.
+	_, err = client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: aws.String("items-table"),
+		Key: map[string]dbtypes.AttributeValue{
+			"id": &dbtypes.AttributeValueMemberS{Value: "item-1"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("DeleteItem: %v", err)
+	}
+
+	// Verify item is gone.
+	getResp, err = client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String("items-table"),
+		Key: map[string]dbtypes.AttributeValue{
+			"id": &dbtypes.AttributeValueMemberS{Value: "item-1"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("GetItem after delete: %v", err)
+	}
+	if getResp.Item != nil {
+		t.Error("expected nil item after delete")
+	}
+}
+
+// TestSNSTopicOperations tests create, list, and delete topic operations.
+func TestSNSTopicOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := sns.NewFromConfig(cfg)
+
+	// Create topic.
+	createResp, err := client.CreateTopic(ctx, &sns.CreateTopicInput{
+		Name: aws.String("test-topic"),
+	})
+	if err != nil {
+		t.Fatalf("CreateTopic: %v", err)
+	}
+	if createResp.TopicArn == nil || *createResp.TopicArn == "" {
+		t.Fatal("expected non-empty TopicArn")
+	}
+	if !strings.Contains(*createResp.TopicArn, "test-topic") {
+		t.Errorf("expected TopicArn to contain 'test-topic', got %s", *createResp.TopicArn)
+	}
+
+	// List topics.
+	listResp, err := client.ListTopics(ctx, &sns.ListTopicsInput{})
+	if err != nil {
+		t.Fatalf("ListTopics: %v", err)
+	}
+	if len(listResp.Topics) != 1 {
+		t.Errorf("expected 1 topic, got %d", len(listResp.Topics))
+	}
+
+	// Delete topic.
+	_, err = client.DeleteTopic(ctx, &sns.DeleteTopicInput{
+		TopicArn: createResp.TopicArn,
+	})
+	if err != nil {
+		t.Fatalf("DeleteTopic: %v", err)
+	}
+
+	// Verify it's gone.
+	listResp, err = client.ListTopics(ctx, &sns.ListTopicsInput{})
+	if err != nil {
+		t.Fatalf("ListTopics after delete: %v", err)
+	}
+	if len(listResp.Topics) != 0 {
+		t.Errorf("expected 0 topics after delete, got %d", len(listResp.Topics))
+	}
+}
+
+// TestSNSSubscription tests subscribe and list subscriptions.
+func TestSNSSubscription(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := sns.NewFromConfig(cfg)
+
+	// Create topic.
+	createResp, err := client.CreateTopic(ctx, &sns.CreateTopicInput{
+		Name: aws.String("sub-topic"),
+	})
+	if err != nil {
+		t.Fatalf("CreateTopic: %v", err)
+	}
+	topicArn := *createResp.TopicArn
+
+	// Subscribe.
+	subResp, err := client.Subscribe(ctx, &sns.SubscribeInput{
+		TopicArn: aws.String(topicArn),
+		Protocol: aws.String("email"),
+		Endpoint: aws.String("test@example.com"),
+	})
+	if err != nil {
+		t.Fatalf("Subscribe: %v", err)
+	}
+	if subResp.SubscriptionArn == nil || *subResp.SubscriptionArn == "" {
+		t.Fatal("expected non-empty SubscriptionArn")
+	}
+
+	// List subscriptions.
+	listResp, err := client.ListSubscriptions(ctx, &sns.ListSubscriptionsInput{})
+	if err != nil {
+		t.Fatalf("ListSubscriptions: %v", err)
+	}
+	if len(listResp.Subscriptions) != 1 {
+		t.Errorf("expected 1 subscription, got %d", len(listResp.Subscriptions))
+	}
+
+	// Unsubscribe.
+	_, err = client.Unsubscribe(ctx, &sns.UnsubscribeInput{
+		SubscriptionArn: subResp.SubscriptionArn,
+	})
+	if err != nil {
+		t.Fatalf("Unsubscribe: %v", err)
+	}
+
+	// Verify it's gone.
+	listResp, err = client.ListSubscriptions(ctx, &sns.ListSubscriptionsInput{})
+	if err != nil {
+		t.Fatalf("ListSubscriptions after unsubscribe: %v", err)
+	}
+	if len(listResp.Subscriptions) != 0 {
+		t.Errorf("expected 0 subscriptions after unsubscribe, got %d", len(listResp.Subscriptions))
+	}
+}
+
+// TestSNSPublish tests publishing a message to a topic.
+func TestSNSPublish(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := sns.NewFromConfig(cfg)
+
+	// Create topic.
+	createResp, err := client.CreateTopic(ctx, &sns.CreateTopicInput{
+		Name: aws.String("publish-topic"),
+	})
+	if err != nil {
+		t.Fatalf("CreateTopic: %v", err)
+	}
+
+	// Publish message.
+	pubResp, err := client.Publish(ctx, &sns.PublishInput{
+		TopicArn: createResp.TopicArn,
+		Message:  aws.String("hello, world!"),
+	})
+	if err != nil {
+		t.Fatalf("Publish: %v", err)
+	}
+	if pubResp.MessageId == nil || *pubResp.MessageId == "" {
+		t.Error("expected non-empty MessageId")
+	}
+}
+
+// TestSecretsManagerOperations tests create, get, update, list, and delete secret operations.
+func TestSecretsManagerOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := secretsmanager.NewFromConfig(cfg)
+
+	// Create secret.
+	createResp, err := client.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
+		Name:         aws.String("test-secret"),
+		SecretString: aws.String("super-secret-value"),
+		Description:  aws.String("A test secret"),
+	})
+	if err != nil {
+		t.Fatalf("CreateSecret: %v", err)
+	}
+	if createResp.ARN == nil || *createResp.ARN == "" {
+		t.Fatal("expected non-empty ARN")
+	}
+	if createResp.Name == nil || *createResp.Name != "test-secret" {
+		t.Errorf("expected name 'test-secret', got %v", createResp.Name)
+	}
+
+	// Get secret value.
+	getResp, err := client.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+		SecretId: aws.String("test-secret"),
+	})
+	if err != nil {
+		t.Fatalf("GetSecretValue: %v", err)
+	}
+	if getResp.SecretString == nil || *getResp.SecretString != "super-secret-value" {
+		t.Errorf("expected secret value 'super-secret-value', got %v", getResp.SecretString)
+	}
+
+	// Update secret (PutSecretValue).
+	_, err = client.PutSecretValue(ctx, &secretsmanager.PutSecretValueInput{
+		SecretId:     aws.String("test-secret"),
+		SecretString: aws.String("updated-secret-value"),
+	})
+	if err != nil {
+		t.Fatalf("PutSecretValue: %v", err)
+	}
+
+	// Get updated secret value.
+	getResp, err = client.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+		SecretId: aws.String("test-secret"),
+	})
+	if err != nil {
+		t.Fatalf("GetSecretValue after update: %v", err)
+	}
+	if getResp.SecretString == nil || *getResp.SecretString != "updated-secret-value" {
+		t.Errorf("expected updated secret value, got %v", getResp.SecretString)
+	}
+
+	// List secrets.
+	listResp, err := client.ListSecrets(ctx, &secretsmanager.ListSecretsInput{})
+	if err != nil {
+		t.Fatalf("ListSecrets: %v", err)
+	}
+	if len(listResp.SecretList) != 1 {
+		t.Errorf("expected 1 secret, got %d", len(listResp.SecretList))
+	}
+
+	// Describe secret.
+	descResp, err := client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{
+		SecretId: aws.String("test-secret"),
+	})
+	if err != nil {
+		t.Fatalf("DescribeSecret: %v", err)
+	}
+	if descResp.Name == nil || *descResp.Name != "test-secret" {
+		t.Errorf("expected name 'test-secret', got %v", descResp.Name)
+	}
+
+	// Delete secret.
+	_, err = client.DeleteSecret(ctx, &secretsmanager.DeleteSecretInput{
+		SecretId: aws.String("test-secret"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteSecret: %v", err)
+	}
+
+	// Verify it's gone from list.
+	listResp, err = client.ListSecrets(ctx, &secretsmanager.ListSecretsInput{})
+	if err != nil {
+		t.Fatalf("ListSecrets after delete: %v", err)
+	}
+	if len(listResp.SecretList) != 0 {
+		t.Errorf("expected 0 secrets after delete, got %d", len(listResp.SecretList))
 	}
 }

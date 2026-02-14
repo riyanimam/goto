@@ -28,6 +28,9 @@ that uses the AWS SDK for Go v2 without making any real API calls.
 | **S3** | CreateBucket, DeleteBucket, ListBuckets, HeadBucket, PutObject, GetObject, HeadObject, DeleteObject, ListObjectsV2, CopyObject |
 | **SQS** | CreateQueue, DeleteQueue, ListQueues, GetQueueUrl, GetQueueAttributes, SetQueueAttributes, SendMessage, ReceiveMessage, DeleteMessage, PurgeQueue |
 | **STS** | GetCallerIdentity, AssumeRole, GetSessionToken |
+| **DynamoDB** | CreateTable, DeleteTable, DescribeTable, ListTables, PutItem, GetItem, DeleteItem, Query, Scan |
+| **SNS** | CreateTopic, DeleteTopic, ListTopics, Subscribe, Unsubscribe, ListSubscriptions, Publish |
+| **Secrets Manager** | CreateSecret, GetSecretValue, PutSecretValue, DeleteSecret, ListSecrets, DescribeSecret, UpdateSecret |
 
 ## Installation
 
@@ -201,8 +204,9 @@ mock := awsmock.Start(t, awsmock.WithService(myCustomService))
                │
 ┌──────────────▼───────────────────┐
 │       Service Handlers           │
-│   S3, SQS, STS (in-memory)      │
-│   Thread-safe state management   │
+│   S3, SQS, STS, DynamoDB,       │
+│   SNS, Secrets Manager           │
+│   (in-memory, thread-safe)       │
 └──────────────────────────────────┘
 ```
 

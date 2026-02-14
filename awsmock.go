@@ -157,6 +157,8 @@ func (m *MockServer) identifyService(r *http.Request) string {
 				return "dynamodb"
 			case strings.Contains(name, "kinesis"):
 				return "kinesis"
+			case strings.Contains(name, "secretsmanager"):
+				return "secretsmanager"
 			}
 		}
 	}

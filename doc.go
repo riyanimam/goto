@@ -26,6 +26,9 @@
 //   - S3 (Simple Storage Service)
 //   - SQS (Simple Queue Service)
 //   - STS (Security Token Service)
+//   - DynamoDB
+//   - SNS (Simple Notification Service)
+//   - Secrets Manager
 //
 // Additional services can be added by implementing the [Service] interface.
 package awsmock
