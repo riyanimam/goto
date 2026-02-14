@@ -14,7 +14,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"sort"
 	"strings"
@@ -410,6 +409,3 @@ type listResourceRecordSetsResp struct {
 	IsTruncated        bool                   `xml:"IsTruncated"`
 	MaxItems           string                 `xml:"MaxItems"`
 }
-
-// Suppress unused import warning.
-var _ = rand.Intn
