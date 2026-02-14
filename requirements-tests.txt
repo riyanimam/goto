@@ -1,9 +1,0 @@
-coverage
-pycognito
-# Pytest 9.0.0 fails SkipTest, instead of skipping - see https://github.com/pytest-dev/pytest/issues/13895
-pytest!=9.0.0
-pytest-cov
-pytest-order
-pytest-xdist
-freezegun
-pyotp

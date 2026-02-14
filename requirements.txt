@@ -1,2 +1,0 @@
-#  Please add requirements to setup.cfg
--e .[all]

@@ -1,45 +1,35 @@
-moto*.egg-info/*
-dist/*
-.cache
-.tox
-.coverage
-coverage.xml
-cover/
-*.pyc
-*~
-.noseids
-build/
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.html
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# IDE
 .idea/
-*.swp
-.DS_Store
-python_env
-.ropeproject/
-.pytest_cache/
-venv/
-env/
-.python-version
 .vscode/
-tests/file.tmp
-.eggs/
-.mypy_cache/
-*.tmp
-.venv/
-htmlcov/
-.~c9_*
-.coverage*
-docs/_build
-moto_recording
-moto/moto_proxy/certs/*.crt
-moto/moto_proxy/certs/*.csr
-moto/moto_proxy/certs/*.conf
-.hypothesis
-other_langs/tests_java/target
-other_langs/tests_dotnet/ExampleTestProject/bin
-other_langs/tests_dotnet/ExampleTestProject/obj
-other_langs/tests_ruby/Gemfile.lock
-other_langs/terraform/*/.terraform*
-other_langs/terraform/*/terraform*
-other_langs/terraform/awslambda/lambda_function_payload.zip
-other_langs/tests_dotnet/ebs/obj/Debug/*
-other_langs/tests_js/node_modules
-other_langs/tests_js/package-lock.json
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build output
+/bin/
+/dist/

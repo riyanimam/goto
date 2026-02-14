@@ -1,9 +1,0 @@
-sphinx
-sphinx_rtd_theme
-readthedocs-sphinx-search
-
-# Modules necessary to import individual classes and read the docstrings
-docker
-openapi_spec_validator
-PyYAML>=5.1
-joserfc>=0.9.0
