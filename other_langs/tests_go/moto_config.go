@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	DefaultMotoEndpoint = "http://localhost:5000"
-	DefaultMotoRegion   = "us-east-1"
-	defaultCredential   = "EXAMPLE"
+	DefaultMotoEndpoint    = "http://localhost:5000"
+	DefaultMotoRegion      = "us-east-1"
+	defaultCredentialValue = "EXAMPLE"
 )
 
 func NewMotoAWSConfig(ctx context.Context, endpoint string) (aws.Config, error) {
@@ -24,7 +24,7 @@ func NewMotoAWSConfig(ctx context.Context, endpoint string) (aws.Config, error) 
 		config.WithBaseEndpoint(endpoint),
 		config.WithRegion(DefaultMotoRegion),
 		config.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(defaultCredential, defaultCredential, defaultCredential),
+			credentials.NewStaticCredentialsProvider(defaultCredentialValue, defaultCredentialValue, defaultCredentialValue),
 		),
 	)
 }
