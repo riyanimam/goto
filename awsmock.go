@@ -159,6 +159,16 @@ func (m *MockServer) identifyService(r *http.Request) string {
 				return "kinesis"
 			case strings.Contains(name, "secretsmanager"):
 				return "secretsmanager"
+			case strings.Contains(name, "logs"):
+				return "logs"
+			case strings.Contains(name, "awsevents"):
+				return "events"
+			case strings.Contains(name, "amazonssm"):
+				return "ssm"
+			case strings.Contains(name, "trentservice"):
+				return "kms"
+			case strings.Contains(name, "amazonec2containerregistry"):
+				return "api.ecr"
 			}
 		}
 	}
