@@ -5,20 +5,15 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/eks/types"
 )
 
 func TestClusterCreate(t *testing.T) {
-	cfg, err := config.LoadDefaultConfig(
-		context.Background(),
-		config.WithBaseEndpoint("http://localhost:5000"),
-		config.WithRegion("us-east-1"),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("EXAMPLE", "EXAMPLE", "EXAMPLE")),
-		config.WithClientLogMode(aws.LogRequestWithBody|aws.LogResponseWithBody),
-	)
+	cfg, err := NewMotoAWSConfig(context.Background(), "")
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
 
 	eksClient := eks.NewFromConfig(cfg)
 
@@ -33,6 +28,6 @@ func TestClusterCreate(t *testing.T) {
 	ctx := context.Background()
 	_, err = eksClient.CreateCluster(ctx, input)
 	if err != nil {
-		panic(err)
+		t.Fatalf("create cluster: %v", err)
 	}
 }

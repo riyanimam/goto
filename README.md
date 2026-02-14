@@ -62,6 +62,43 @@ def test_my_model_save():
 
 With the decorator wrapping the test, all the calls to s3 are automatically mocked out. The mock keeps track of the state of the buckets and keys.
 
+### Using Moto with Go
+
+Go applications can use Moto by pointing AWS SDK v2 clients at a running MotoServer endpoint.
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+
+    "github.com/aws/aws-sdk-go-v2/config"
+    "github.com/aws/aws-sdk-go-v2/credentials"
+    "github.com/aws/aws-sdk-go-v2/service/s3"
+)
+
+func main() {
+    cfg, err := config.LoadDefaultConfig(
+        context.Background(),
+        config.WithBaseEndpoint("http://localhost:5000"),
+        config.WithRegion("us-east-1"),
+        config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("test", "test", "test")),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    client := s3.NewFromConfig(cfg)
+    _, err = client.ListBuckets(context.Background(), nil)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+For end-to-end Go SDK integration examples, see `other_langs/tests_go`.
+
 For a full list of which services and features are covered, please see our [implementation coverage](https://github.com/getmoto/moto/blob/master/IMPLEMENTATION_COVERAGE.md).
 
 
