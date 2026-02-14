@@ -55,7 +55,7 @@ func New() *Service {
 }
 
 // Name returns the service identifier.
-func (s *Service) Name() string { return "api.ecr" }
+func (s *Service) Name() string { return "ecr" }
 
 // Handler returns the HTTP handler for ECR requests.
 func (s *Service) Handler() http.Handler {

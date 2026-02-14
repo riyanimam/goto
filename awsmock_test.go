@@ -7,12 +7,26 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	cwltypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ecr"
+	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
+	ebtypes "github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/kinesis"
+	"github.com/aws/aws-sdk-go-v2/service/kms"
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
+	lambdatypes "github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	ssmtypes "github.com/aws/aws-sdk-go-v2/service/ssm/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	awsmock "github.com/riyanimam/goto"
@@ -912,5 +926,867 @@ func TestSecretsManagerOperations(t *testing.T) {
 	}
 	if len(listResp.SecretList) != 0 {
 		t.Errorf("expected 0 secrets after delete, got %d", len(listResp.SecretList))
+	}
+}
+
+// TestLambdaFunctionOperations tests create, get, list, invoke, and delete function operations.
+func TestLambdaFunctionOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := lambda.NewFromConfig(cfg)
+
+	// Create function.
+	createResp, err := client.CreateFunction(ctx, &lambda.CreateFunctionInput{
+		FunctionName: aws.String("my-function"),
+		Runtime:      lambdatypes.RuntimePython312,
+		Role:         aws.String("arn:aws:iam::123456789012:role/lambda-role"),
+		Handler:      aws.String("index.handler"),
+		Code: &lambdatypes.FunctionCode{
+			ZipFile: []byte("fake-code"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateFunction: %v", err)
+	}
+	if createResp.FunctionName == nil || *createResp.FunctionName != "my-function" {
+		t.Errorf("expected function name 'my-function', got %v", createResp.FunctionName)
+	}
+	if createResp.FunctionArn == nil || !strings.Contains(*createResp.FunctionArn, "my-function") {
+		t.Errorf("expected ARN containing 'my-function', got %v", createResp.FunctionArn)
+	}
+
+	// Get function.
+	getResp, err := client.GetFunction(ctx, &lambda.GetFunctionInput{
+		FunctionName: aws.String("my-function"),
+	})
+	if err != nil {
+		t.Fatalf("GetFunction: %v", err)
+	}
+	if getResp.Configuration == nil || *getResp.Configuration.FunctionName != "my-function" {
+		t.Error("expected function configuration with name 'my-function'")
+	}
+
+	// List functions.
+	listResp, err := client.ListFunctions(ctx, &lambda.ListFunctionsInput{})
+	if err != nil {
+		t.Fatalf("ListFunctions: %v", err)
+	}
+	if len(listResp.Functions) != 1 {
+		t.Errorf("expected 1 function, got %d", len(listResp.Functions))
+	}
+
+	// Invoke function.
+	invokeResp, err := client.Invoke(ctx, &lambda.InvokeInput{
+		FunctionName: aws.String("my-function"),
+		Payload:      []byte(`{"key":"value"}`),
+	})
+	if err != nil {
+		t.Fatalf("Invoke: %v", err)
+	}
+	if invokeResp.StatusCode != 200 {
+		t.Errorf("expected status 200, got %d", invokeResp.StatusCode)
+	}
+
+	// Delete function.
+	_, err = client.DeleteFunction(ctx, &lambda.DeleteFunctionInput{
+		FunctionName: aws.String("my-function"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteFunction: %v", err)
+	}
+
+	// Verify it's gone.
+	listResp, err = client.ListFunctions(ctx, &lambda.ListFunctionsInput{})
+	if err != nil {
+		t.Fatalf("ListFunctions after delete: %v", err)
+	}
+	if len(listResp.Functions) != 0 {
+		t.Errorf("expected 0 functions after delete, got %d", len(listResp.Functions))
+	}
+}
+
+// TestCloudWatchLogsOperations tests log group, stream, and event operations.
+func TestCloudWatchLogsOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := cloudwatchlogs.NewFromConfig(cfg)
+
+	// Create log group.
+	_, err = client.CreateLogGroup(ctx, &cloudwatchlogs.CreateLogGroupInput{
+		LogGroupName: aws.String("/test/logs"),
+	})
+	if err != nil {
+		t.Fatalf("CreateLogGroup: %v", err)
+	}
+
+	// Describe log groups.
+	descResp, err := client.DescribeLogGroups(ctx, &cloudwatchlogs.DescribeLogGroupsInput{})
+	if err != nil {
+		t.Fatalf("DescribeLogGroups: %v", err)
+	}
+	if len(descResp.LogGroups) != 1 {
+		t.Errorf("expected 1 log group, got %d", len(descResp.LogGroups))
+	}
+	if descResp.LogGroups[0].LogGroupName == nil || *descResp.LogGroups[0].LogGroupName != "/test/logs" {
+		t.Errorf("expected log group name '/test/logs'")
+	}
+
+	// Create log stream.
+	_, err = client.CreateLogStream(ctx, &cloudwatchlogs.CreateLogStreamInput{
+		LogGroupName:  aws.String("/test/logs"),
+		LogStreamName: aws.String("stream-1"),
+	})
+	if err != nil {
+		t.Fatalf("CreateLogStream: %v", err)
+	}
+
+	// Describe log streams.
+	streamResp, err := client.DescribeLogStreams(ctx, &cloudwatchlogs.DescribeLogStreamsInput{
+		LogGroupName: aws.String("/test/logs"),
+	})
+	if err != nil {
+		t.Fatalf("DescribeLogStreams: %v", err)
+	}
+	if len(streamResp.LogStreams) != 1 {
+		t.Errorf("expected 1 stream, got %d", len(streamResp.LogStreams))
+	}
+
+	// Put log events.
+	_, err = client.PutLogEvents(ctx, &cloudwatchlogs.PutLogEventsInput{
+		LogGroupName:  aws.String("/test/logs"),
+		LogStreamName: aws.String("stream-1"),
+		LogEvents: []cwltypes.InputLogEvent{
+			{Timestamp: aws.Int64(1000), Message: aws.String("hello log")},
+		},
+	})
+	if err != nil {
+		t.Fatalf("PutLogEvents: %v", err)
+	}
+
+	// Get log events.
+	getResp, err := client.GetLogEvents(ctx, &cloudwatchlogs.GetLogEventsInput{
+		LogGroupName:  aws.String("/test/logs"),
+		LogStreamName: aws.String("stream-1"),
+	})
+	if err != nil {
+		t.Fatalf("GetLogEvents: %v", err)
+	}
+	if len(getResp.Events) != 1 {
+		t.Errorf("expected 1 event, got %d", len(getResp.Events))
+	}
+	if getResp.Events[0].Message == nil || *getResp.Events[0].Message != "hello log" {
+		t.Errorf("expected message 'hello log', got %v", getResp.Events[0].Message)
+	}
+
+	// Delete log group.
+	_, err = client.DeleteLogGroup(ctx, &cloudwatchlogs.DeleteLogGroupInput{
+		LogGroupName: aws.String("/test/logs"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteLogGroup: %v", err)
+	}
+
+	// Verify it's gone.
+	descResp, err = client.DescribeLogGroups(ctx, &cloudwatchlogs.DescribeLogGroupsInput{})
+	if err != nil {
+		t.Fatalf("DescribeLogGroups after delete: %v", err)
+	}
+	if len(descResp.LogGroups) != 0 {
+		t.Errorf("expected 0 log groups after delete, got %d", len(descResp.LogGroups))
+	}
+}
+
+// TestIAMUserOperations tests create, get, list, and delete user operations.
+func TestIAMUserOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := iam.NewFromConfig(cfg)
+
+	// Create user.
+	createResp, err := client.CreateUser(ctx, &iam.CreateUserInput{
+		UserName: aws.String("test-user"),
+	})
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	if createResp.User == nil || *createResp.User.UserName != "test-user" {
+		t.Error("expected user with name 'test-user'")
+	}
+
+	// Get user.
+	getResp, err := client.GetUser(ctx, &iam.GetUserInput{
+		UserName: aws.String("test-user"),
+	})
+	if err != nil {
+		t.Fatalf("GetUser: %v", err)
+	}
+	if *getResp.User.UserName != "test-user" {
+		t.Errorf("expected user name 'test-user', got %s", *getResp.User.UserName)
+	}
+
+	// List users.
+	listUsersResp, err := client.ListUsers(ctx, &iam.ListUsersInput{})
+	if err != nil {
+		t.Fatalf("ListUsers: %v", err)
+	}
+	if len(listUsersResp.Users) != 1 {
+		t.Errorf("expected 1 user, got %d", len(listUsersResp.Users))
+	}
+
+	// Delete user.
+	_, err = client.DeleteUser(ctx, &iam.DeleteUserInput{
+		UserName: aws.String("test-user"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteUser: %v", err)
+	}
+
+	// Verify it's gone.
+	listUsersResp, err = client.ListUsers(ctx, &iam.ListUsersInput{})
+	if err != nil {
+		t.Fatalf("ListUsers after delete: %v", err)
+	}
+	if len(listUsersResp.Users) != 0 {
+		t.Errorf("expected 0 users after delete, got %d", len(listUsersResp.Users))
+	}
+}
+
+// TestIAMRoleOperations tests create, get, list, and delete role operations.
+func TestIAMRoleOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := iam.NewFromConfig(cfg)
+
+	// Create role.
+	createResp, err := client.CreateRole(ctx, &iam.CreateRoleInput{
+		RoleName:                 aws.String("test-role"),
+		AssumeRolePolicyDocument: aws.String(`{"Version":"2012-10-17","Statement":[]}`),
+	})
+	if err != nil {
+		t.Fatalf("CreateRole: %v", err)
+	}
+	if createResp.Role == nil || *createResp.Role.RoleName != "test-role" {
+		t.Error("expected role with name 'test-role'")
+	}
+
+	// List roles.
+	listResp, err := client.ListRoles(ctx, &iam.ListRolesInput{})
+	if err != nil {
+		t.Fatalf("ListRoles: %v", err)
+	}
+	if len(listResp.Roles) != 1 {
+		t.Errorf("expected 1 role, got %d", len(listResp.Roles))
+	}
+
+	// Delete role.
+	_, err = client.DeleteRole(ctx, &iam.DeleteRoleInput{
+		RoleName: aws.String("test-role"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteRole: %v", err)
+	}
+}
+
+// TestEC2InstanceOperations tests run, describe, and terminate instance operations.
+func TestEC2InstanceOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := ec2.NewFromConfig(cfg)
+
+	// Run instances.
+	runResp, err := client.RunInstances(ctx, &ec2.RunInstancesInput{
+		ImageId:      aws.String("ami-12345678"),
+		InstanceType: "t2.micro",
+		MinCount:     aws.Int32(1),
+		MaxCount:     aws.Int32(1),
+	})
+	if err != nil {
+		t.Fatalf("RunInstances: %v", err)
+	}
+	if len(runResp.Instances) != 1 {
+		t.Fatalf("expected 1 instance, got %d", len(runResp.Instances))
+	}
+	instanceID := *runResp.Instances[0].InstanceId
+	if !strings.HasPrefix(instanceID, "i-") {
+		t.Errorf("expected instance ID starting with 'i-', got %s", instanceID)
+	}
+
+	// Describe instances.
+	descResp, err := client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{})
+	if err != nil {
+		t.Fatalf("DescribeInstances: %v", err)
+	}
+	if len(descResp.Reservations) == 0 || len(descResp.Reservations[0].Instances) == 0 {
+		t.Fatal("expected at least one instance in reservations")
+	}
+
+	// Terminate instances.
+	termResp, err := client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
+		InstanceIds: []string{instanceID},
+	})
+	if err != nil {
+		t.Fatalf("TerminateInstances: %v", err)
+	}
+	if len(termResp.TerminatingInstances) != 1 {
+		t.Errorf("expected 1 terminating instance, got %d", len(termResp.TerminatingInstances))
+	}
+}
+
+// TestEC2VpcOperations tests create, describe, and delete VPC operations.
+func TestEC2VpcOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := ec2.NewFromConfig(cfg)
+
+	// Create VPC.
+	vpcResp, err := client.CreateVpc(ctx, &ec2.CreateVpcInput{
+		CidrBlock: aws.String("10.0.0.0/16"),
+	})
+	if err != nil {
+		t.Fatalf("CreateVpc: %v", err)
+	}
+	if vpcResp.Vpc == nil || vpcResp.Vpc.VpcId == nil {
+		t.Fatal("expected non-nil VPC")
+	}
+	vpcID := *vpcResp.Vpc.VpcId
+
+	// Describe VPCs.
+	descResp, err := client.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{})
+	if err != nil {
+		t.Fatalf("DescribeVpcs: %v", err)
+	}
+	if len(descResp.Vpcs) != 1 {
+		t.Errorf("expected 1 VPC, got %d", len(descResp.Vpcs))
+	}
+
+	// Delete VPC.
+	_, err = client.DeleteVpc(ctx, &ec2.DeleteVpcInput{
+		VpcId: aws.String(vpcID),
+	})
+	if err != nil {
+		t.Fatalf("DeleteVpc: %v", err)
+	}
+}
+
+// TestKinesisStreamOperations tests create, describe, list, put record, and delete stream operations.
+func TestKinesisStreamOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := kinesis.NewFromConfig(cfg)
+
+	// Create stream.
+	_, err = client.CreateStream(ctx, &kinesis.CreateStreamInput{
+		StreamName: aws.String("test-stream"),
+		ShardCount: aws.Int32(1),
+	})
+	if err != nil {
+		t.Fatalf("CreateStream: %v", err)
+	}
+
+	// Describe stream.
+	descResp, err := client.DescribeStream(ctx, &kinesis.DescribeStreamInput{
+		StreamName: aws.String("test-stream"),
+	})
+	if err != nil {
+		t.Fatalf("DescribeStream: %v", err)
+	}
+	if descResp.StreamDescription == nil || *descResp.StreamDescription.StreamName != "test-stream" {
+		t.Error("expected stream name 'test-stream'")
+	}
+
+	// List streams.
+	listResp, err := client.ListStreams(ctx, &kinesis.ListStreamsInput{})
+	if err != nil {
+		t.Fatalf("ListStreams: %v", err)
+	}
+	if len(listResp.StreamNames) != 1 {
+		t.Errorf("expected 1 stream, got %d", len(listResp.StreamNames))
+	}
+
+	// Put record.
+	putResp, err := client.PutRecord(ctx, &kinesis.PutRecordInput{
+		StreamName:   aws.String("test-stream"),
+		Data:         []byte("hello kinesis"),
+		PartitionKey: aws.String("key-1"),
+	})
+	if err != nil {
+		t.Fatalf("PutRecord: %v", err)
+	}
+	if putResp.SequenceNumber == nil || *putResp.SequenceNumber == "" {
+		t.Error("expected non-empty sequence number")
+	}
+
+	// Delete stream.
+	_, err = client.DeleteStream(ctx, &kinesis.DeleteStreamInput{
+		StreamName: aws.String("test-stream"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteStream: %v", err)
+	}
+
+	// Verify it's gone.
+	listResp, err = client.ListStreams(ctx, &kinesis.ListStreamsInput{})
+	if err != nil {
+		t.Fatalf("ListStreams after delete: %v", err)
+	}
+	if len(listResp.StreamNames) != 0 {
+		t.Errorf("expected 0 streams after delete, got %d", len(listResp.StreamNames))
+	}
+}
+
+// TestEventBridgeOperations tests event bus, rule, target, and put events operations.
+func TestEventBridgeOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := eventbridge.NewFromConfig(cfg)
+
+	// List event buses - should have the default bus.
+	busResp, err := client.ListEventBuses(ctx, &eventbridge.ListEventBusesInput{})
+	if err != nil {
+		t.Fatalf("ListEventBuses: %v", err)
+	}
+	if len(busResp.EventBuses) < 1 {
+		t.Error("expected at least 1 event bus (default)")
+	}
+
+	// Create a custom event bus.
+	createBusResp, err := client.CreateEventBus(ctx, &eventbridge.CreateEventBusInput{
+		Name: aws.String("custom-bus"),
+	})
+	if err != nil {
+		t.Fatalf("CreateEventBus: %v", err)
+	}
+	if createBusResp.EventBusArn == nil || *createBusResp.EventBusArn == "" {
+		t.Error("expected non-empty EventBusArn")
+	}
+
+	// Put rule.
+	ruleResp, err := client.PutRule(ctx, &eventbridge.PutRuleInput{
+		Name:         aws.String("test-rule"),
+		EventPattern: aws.String(`{"source":["test"]}`),
+	})
+	if err != nil {
+		t.Fatalf("PutRule: %v", err)
+	}
+	if ruleResp.RuleArn == nil || *ruleResp.RuleArn == "" {
+		t.Error("expected non-empty RuleArn")
+	}
+
+	// List rules.
+	rulesResp, err := client.ListRules(ctx, &eventbridge.ListRulesInput{})
+	if err != nil {
+		t.Fatalf("ListRules: %v", err)
+	}
+	if len(rulesResp.Rules) != 1 {
+		t.Errorf("expected 1 rule, got %d", len(rulesResp.Rules))
+	}
+
+	// Put events.
+	eventsResp, err := client.PutEvents(ctx, &eventbridge.PutEventsInput{
+		Entries: []ebtypes.PutEventsRequestEntry{
+			{
+				Source:     aws.String("test"),
+				DetailType: aws.String("TestEvent"),
+				Detail:     aws.String(`{"key":"value"}`),
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("PutEvents: %v", err)
+	}
+	if eventsResp.FailedEntryCount != 0 {
+		t.Errorf("expected 0 failed entries, got %d", eventsResp.FailedEntryCount)
+	}
+
+	// Delete rule and bus.
+	_, err = client.DeleteRule(ctx, &eventbridge.DeleteRuleInput{
+		Name: aws.String("test-rule"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteRule: %v", err)
+	}
+
+	_, err = client.DeleteEventBus(ctx, &eventbridge.DeleteEventBusInput{
+		Name: aws.String("custom-bus"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteEventBus: %v", err)
+	}
+}
+
+// TestSSMParameterOperations tests put, get, describe, get by path, and delete parameter operations.
+func TestSSMParameterOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := ssm.NewFromConfig(cfg)
+
+	// Put parameter.
+	putResp, err := client.PutParameter(ctx, &ssm.PutParameterInput{
+		Name:  aws.String("/app/database/host"),
+		Value: aws.String("db.example.com"),
+		Type:  ssmtypes.ParameterTypeString,
+	})
+	if err != nil {
+		t.Fatalf("PutParameter: %v", err)
+	}
+	if putResp.Version != 1 {
+		t.Errorf("expected version 1, got %d", putResp.Version)
+	}
+
+	// Get parameter.
+	getResp, err := client.GetParameter(ctx, &ssm.GetParameterInput{
+		Name: aws.String("/app/database/host"),
+	})
+	if err != nil {
+		t.Fatalf("GetParameter: %v", err)
+	}
+	if getResp.Parameter == nil || *getResp.Parameter.Value != "db.example.com" {
+		t.Errorf("expected value 'db.example.com', got %v", getResp.Parameter)
+	}
+
+	// Put another parameter for path testing.
+	_, err = client.PutParameter(ctx, &ssm.PutParameterInput{
+		Name:  aws.String("/app/database/port"),
+		Value: aws.String("5432"),
+		Type:  ssmtypes.ParameterTypeString,
+	})
+	if err != nil {
+		t.Fatalf("PutParameter port: %v", err)
+	}
+
+	// Get parameters by path.
+	pathResp, err := client.GetParametersByPath(ctx, &ssm.GetParametersByPathInput{
+		Path:      aws.String("/app/database"),
+		Recursive: aws.Bool(true),
+	})
+	if err != nil {
+		t.Fatalf("GetParametersByPath: %v", err)
+	}
+	if len(pathResp.Parameters) != 2 {
+		t.Errorf("expected 2 parameters, got %d", len(pathResp.Parameters))
+	}
+
+	// Describe parameters.
+	descResp, err := client.DescribeParameters(ctx, &ssm.DescribeParametersInput{})
+	if err != nil {
+		t.Fatalf("DescribeParameters: %v", err)
+	}
+	if len(descResp.Parameters) != 2 {
+		t.Errorf("expected 2 parameter descriptions, got %d", len(descResp.Parameters))
+	}
+
+	// Delete parameter.
+	_, err = client.DeleteParameter(ctx, &ssm.DeleteParameterInput{
+		Name: aws.String("/app/database/host"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteParameter: %v", err)
+	}
+}
+
+// TestKMSKeyOperations tests create, describe, list, encrypt, decrypt, and alias operations.
+func TestKMSKeyOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := kms.NewFromConfig(cfg)
+
+	// Create key.
+	createResp, err := client.CreateKey(ctx, &kms.CreateKeyInput{
+		Description: aws.String("Test encryption key"),
+	})
+	if err != nil {
+		t.Fatalf("CreateKey: %v", err)
+	}
+	if createResp.KeyMetadata == nil || createResp.KeyMetadata.KeyId == nil {
+		t.Fatal("expected non-nil KeyMetadata")
+	}
+	keyID := *createResp.KeyMetadata.KeyId
+
+	// Describe key.
+	descResp, err := client.DescribeKey(ctx, &kms.DescribeKeyInput{
+		KeyId: aws.String(keyID),
+	})
+	if err != nil {
+		t.Fatalf("DescribeKey: %v", err)
+	}
+	if descResp.KeyMetadata == nil || *descResp.KeyMetadata.Description != "Test encryption key" {
+		t.Error("expected description 'Test encryption key'")
+	}
+
+	// List keys.
+	listResp, err := client.ListKeys(ctx, &kms.ListKeysInput{})
+	if err != nil {
+		t.Fatalf("ListKeys: %v", err)
+	}
+	if len(listResp.Keys) != 1 {
+		t.Errorf("expected 1 key, got %d", len(listResp.Keys))
+	}
+
+	// Encrypt.
+	encResp, err := client.Encrypt(ctx, &kms.EncryptInput{
+		KeyId:     aws.String(keyID),
+		Plaintext: []byte("secret data"),
+	})
+	if err != nil {
+		t.Fatalf("Encrypt: %v", err)
+	}
+	if len(encResp.CiphertextBlob) == 0 {
+		t.Error("expected non-empty ciphertext")
+	}
+
+	// Decrypt.
+	decResp, err := client.Decrypt(ctx, &kms.DecryptInput{
+		CiphertextBlob: encResp.CiphertextBlob,
+	})
+	if err != nil {
+		t.Fatalf("Decrypt: %v", err)
+	}
+	if string(decResp.Plaintext) != "secret data" {
+		t.Errorf("expected plaintext 'secret data', got %q", string(decResp.Plaintext))
+	}
+
+	// Create alias.
+	_, err = client.CreateAlias(ctx, &kms.CreateAliasInput{
+		AliasName:   aws.String("alias/test-key"),
+		TargetKeyId: aws.String(keyID),
+	})
+	if err != nil {
+		t.Fatalf("CreateAlias: %v", err)
+	}
+
+	// List aliases.
+	aliasResp, err := client.ListAliases(ctx, &kms.ListAliasesInput{})
+	if err != nil {
+		t.Fatalf("ListAliases: %v", err)
+	}
+	if len(aliasResp.Aliases) != 1 {
+		t.Errorf("expected 1 alias, got %d", len(aliasResp.Aliases))
+	}
+
+	// Delete alias.
+	_, err = client.DeleteAlias(ctx, &kms.DeleteAliasInput{
+		AliasName: aws.String("alias/test-key"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteAlias: %v", err)
+	}
+}
+
+// TestCloudFormationStackOperations tests create, describe, list, update, and delete stack operations.
+func TestCloudFormationStackOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := cloudformation.NewFromConfig(cfg)
+
+	// Create stack.
+	createResp, err := client.CreateStack(ctx, &cloudformation.CreateStackInput{
+		StackName:    aws.String("test-stack"),
+		TemplateBody: aws.String(`{"AWSTemplateFormatVersion":"2010-09-09","Resources":{}}`),
+	})
+	if err != nil {
+		t.Fatalf("CreateStack: %v", err)
+	}
+	if createResp.StackId == nil || *createResp.StackId == "" {
+		t.Error("expected non-empty StackId")
+	}
+
+	// Describe stacks.
+	descResp, err := client.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
+		StackName: aws.String("test-stack"),
+	})
+	if err != nil {
+		t.Fatalf("DescribeStacks: %v", err)
+	}
+	if len(descResp.Stacks) != 1 {
+		t.Errorf("expected 1 stack, got %d", len(descResp.Stacks))
+	}
+	if *descResp.Stacks[0].StackName != "test-stack" {
+		t.Errorf("expected stack name 'test-stack', got %s", *descResp.Stacks[0].StackName)
+	}
+
+	// List stacks.
+	listResp, err := client.ListStacks(ctx, &cloudformation.ListStacksInput{})
+	if err != nil {
+		t.Fatalf("ListStacks: %v", err)
+	}
+	if len(listResp.StackSummaries) != 1 {
+		t.Errorf("expected 1 stack summary, got %d", len(listResp.StackSummaries))
+	}
+
+	// Update stack.
+	_, err = client.UpdateStack(ctx, &cloudformation.UpdateStackInput{
+		StackName:    aws.String("test-stack"),
+		TemplateBody: aws.String(`{"AWSTemplateFormatVersion":"2010-09-09","Resources":{"Bucket":{}}}`),
+	})
+	if err != nil {
+		t.Fatalf("UpdateStack: %v", err)
+	}
+
+	// Delete stack.
+	_, err = client.DeleteStack(ctx, &cloudformation.DeleteStackInput{
+		StackName: aws.String("test-stack"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteStack: %v", err)
+	}
+
+	// Verify it's gone.
+	descResp, err = client.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
+		StackName: aws.String("test-stack"),
+	})
+	if err != nil {
+		t.Fatalf("DescribeStacks after delete: %v", err)
+	}
+	if len(descResp.Stacks) != 0 {
+		t.Errorf("expected 0 stacks after delete, got %d", len(descResp.Stacks))
+	}
+}
+
+// TestECRRepositoryOperations tests create, describe, list images, put image, and delete repository operations.
+func TestECRRepositoryOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := ecr.NewFromConfig(cfg)
+
+	// Create repository.
+	createResp, err := client.CreateRepository(ctx, &ecr.CreateRepositoryInput{
+		RepositoryName: aws.String("my-app"),
+	})
+	if err != nil {
+		t.Fatalf("CreateRepository: %v", err)
+	}
+	if createResp.Repository == nil || *createResp.Repository.RepositoryName != "my-app" {
+		t.Error("expected repository name 'my-app'")
+	}
+
+	// Describe repositories.
+	descResp, err := client.DescribeRepositories(ctx, &ecr.DescribeRepositoriesInput{})
+	if err != nil {
+		t.Fatalf("DescribeRepositories: %v", err)
+	}
+	if len(descResp.Repositories) != 1 {
+		t.Errorf("expected 1 repository, got %d", len(descResp.Repositories))
+	}
+
+	// Put image.
+	putResp, err := client.PutImage(ctx, &ecr.PutImageInput{
+		RepositoryName: aws.String("my-app"),
+		ImageTag:       aws.String("latest"),
+		ImageManifest:  aws.String(`{"schemaVersion":2}`),
+	})
+	if err != nil {
+		t.Fatalf("PutImage: %v", err)
+	}
+	if putResp.Image == nil || putResp.Image.ImageId == nil {
+		t.Error("expected non-nil image result")
+	}
+
+	// List images.
+	listResp, err := client.ListImages(ctx, &ecr.ListImagesInput{
+		RepositoryName: aws.String("my-app"),
+	})
+	if err != nil {
+		t.Fatalf("ListImages: %v", err)
+	}
+	if len(listResp.ImageIds) != 1 {
+		t.Errorf("expected 1 image, got %d", len(listResp.ImageIds))
+	}
+
+	// Get authorization token.
+	authResp, err := client.GetAuthorizationToken(ctx, &ecr.GetAuthorizationTokenInput{})
+	if err != nil {
+		t.Fatalf("GetAuthorizationToken: %v", err)
+	}
+	if len(authResp.AuthorizationData) != 1 {
+		t.Errorf("expected 1 auth data, got %d", len(authResp.AuthorizationData))
+	}
+
+	// Delete repository.
+	_, err = client.DeleteRepository(ctx, &ecr.DeleteRepositoryInput{
+		RepositoryName: aws.String("my-app"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteRepository: %v", err)
+	}
+
+	// Verify it's gone.
+	descResp, err = client.DescribeRepositories(ctx, &ecr.DescribeRepositoriesInput{})
+	if err != nil {
+		t.Fatalf("DescribeRepositories after delete: %v", err)
+	}
+	if len(descResp.Repositories) != 0 {
+		t.Errorf("expected 0 repositories after delete, got %d", len(descResp.Repositories))
 	}
 }

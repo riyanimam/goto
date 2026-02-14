@@ -168,7 +168,7 @@ func (m *MockServer) identifyService(r *http.Request) string {
 			case strings.Contains(name, "trentservice"):
 				return "kms"
 			case strings.Contains(name, "amazonec2containerregistry"):
-				return "api.ecr"
+				return "ecr"
 			}
 		}
 	}
