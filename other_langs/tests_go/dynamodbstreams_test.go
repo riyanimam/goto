@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodbstreams"
@@ -17,14 +15,10 @@ const (
 )
 
 func TestDescribeStream(t *testing.T) {
-
-	cfg, err := config.LoadDefaultConfig(
-		context.Background(),
-		config.WithBaseEndpoint("http://localhost:5000"),
-		config.WithRegion("us-east-1"),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("EXAMPLE", "EXAMPLE", "EXAMPLE")),
-		config.WithClientLogMode(aws.LogRequestWithBody|aws.LogResponseWithBody),
-	)
+	cfg, err := NewMotoAWSConfig(context.Background(), "")
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
 
 	ddbClient := dynamodb.NewFromConfig(cfg)
 
@@ -63,7 +57,7 @@ func TestDescribeStream(t *testing.T) {
 	ctx := context.Background()
 	result, err := ddbClient.CreateTable(ctx, CreateTableInput)
 	if err != nil {
-		panic(err)
+		t.Fatalf("create table: %v", err)
 	}
 	streamArn := *result.TableDescription.LatestStreamArn
 
@@ -75,12 +69,12 @@ func TestDescribeStream(t *testing.T) {
 
 	streamInfo, err := ddbsClient.DescribeStream(ctx, DescribeStreamInput)
 	if err != nil {
-		panic(err)
+		t.Fatalf("describe stream: %v", err)
 	}
 
 	streamArn = *streamInfo.StreamDescription.StreamArn
 	checkFor := TableName + "/stream/"
-	if strings.Contains(streamArn, checkFor) == false {
+	if !strings.Contains(streamArn, checkFor) {
 		t.Errorf("StreamArn does not contain our table name [%s].", TableName)
 	}
 }
