@@ -353,9 +353,9 @@ func (s *Service) getLogEvents(w http.ResponseWriter, params map[string]interfac
 	var events []map[string]interface{}
 	for _, e := range ls.events {
 		events = append(events, map[string]interface{}{
-			"timestamp":      e.timestamp,
-			"message":        e.message,
-			"ingestionTime":  e.ingested,
+			"timestamp":     e.timestamp,
+			"message":       e.message,
+			"ingestionTime": e.ingested,
 		})
 	}
 	lg.streamsMu.Unlock()
@@ -398,7 +398,7 @@ func (s *Service) filterLogEvents(w http.ResponseWriter, params map[string]inter
 	lg.streamsMu.Unlock()
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"events":       events,
+		"events":             events,
 		"searchedLogStreams": []interface{}{},
 	})
 }

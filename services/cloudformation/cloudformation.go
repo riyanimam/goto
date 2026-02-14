@@ -178,9 +178,9 @@ func (s *Service) listStacks(w http.ResponseWriter, _ *http.Request) {
 	var summaries []cfStackSummary
 	for _, st := range s.stacks {
 		summaries = append(summaries, cfStackSummary{
-			StackName:   st.name,
-			StackId:     st.arn,
-			StackStatus: st.status,
+			StackName:    st.name,
+			StackId:      st.arn,
+			StackStatus:  st.status,
 			CreationTime: st.created.Format(time.RFC3339),
 		})
 	}
@@ -270,7 +270,9 @@ type createStackResponse struct {
 	Result    createStackResult `xml:"CreateStackResult"`
 	RequestID string            `xml:"ResponseMetadata>RequestId"`
 }
-type createStackResult struct{ StackId string `xml:"StackId"` }
+type createStackResult struct {
+	StackId string `xml:"StackId"`
+}
 
 type deleteStackResponse struct {
 	XMLName   xml.Name `xml:"DeleteStackResponse"`
@@ -304,7 +306,9 @@ type updateStackResponse struct {
 	Result    updateStackResult `xml:"UpdateStackResult"`
 	RequestID string            `xml:"ResponseMetadata>RequestId"`
 }
-type updateStackResult struct{ StackId string `xml:"StackId"` }
+type updateStackResult struct {
+	StackId string `xml:"StackId"`
+}
 
 type cfErrorResponse struct {
 	XMLName   xml.Name `xml:"ErrorResponse"`

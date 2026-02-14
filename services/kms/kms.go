@@ -31,18 +31,18 @@ const defaultAccountID = "123456789012"
 // Service implements the KMS mock.
 type Service struct {
 	mu      sync.RWMutex
-	keys    map[string]*key    // keyed by key ID
-	aliases map[string]*alias  // keyed by alias name
+	keys    map[string]*key   // keyed by key ID
+	aliases map[string]*alias // keyed by alias name
 }
 
 type key struct {
-	id          string
-	arn         string
-	description string
-	state       string
-	created     time.Time
-	keyUsage    string
-	keySpec     string
+	id           string
+	arn          string
+	description  string
+	state        string
+	created      time.Time
+	keyUsage     string
+	keySpec      string
 	deletionDate *time.Time
 }
 
@@ -216,8 +216,8 @@ func (s *Service) encrypt(w http.ResponseWriter, params map[string]interface{}) 
 	ciphertext := append([]byte(k.id+":"), plaintext...)
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"CiphertextBlob":    base64.StdEncoding.EncodeToString(ciphertext),
-		"KeyId":             k.arn,
+		"CiphertextBlob":      base64.StdEncoding.EncodeToString(ciphertext),
+		"KeyId":               k.arn,
 		"EncryptionAlgorithm": "SYMMETRIC_DEFAULT",
 	})
 }
@@ -379,15 +379,15 @@ func (s *Service) findKey(keyID string) *key {
 
 func keyMetadata(k *key) map[string]interface{} {
 	meta := map[string]interface{}{
-		"KeyId":               k.id,
-		"Arn":                 k.arn,
-		"Description":         k.description,
-		"KeyState":            k.state,
-		"CreationDate":        float64(k.created.Unix()),
-		"Enabled":             k.state == "Enabled",
-		"KeyUsage":            k.keyUsage,
-		"KeySpec":             k.keySpec,
-		"KeyManager":          "CUSTOMER",
+		"KeyId":                 k.id,
+		"Arn":                   k.arn,
+		"Description":           k.description,
+		"KeyState":              k.state,
+		"CreationDate":          float64(k.created.Unix()),
+		"Enabled":               k.state == "Enabled",
+		"KeyUsage":              k.keyUsage,
+		"KeySpec":               k.keySpec,
+		"KeyManager":            "CUSTOMER",
 		"CustomerMasterKeySpec": k.keySpec,
 	}
 	if k.deletionDate != nil {

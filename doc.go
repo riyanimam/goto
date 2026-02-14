@@ -29,6 +29,16 @@
 //   - DynamoDB
 //   - SNS (Simple Notification Service)
 //   - Secrets Manager
+//   - Lambda
+//   - CloudWatch Logs
+//   - IAM (Identity and Access Management)
+//   - EC2 (Elastic Compute Cloud)
+//   - Kinesis Data Streams
+//   - EventBridge
+//   - SSM Parameter Store
+//   - KMS (Key Management Service)
+//   - CloudFormation
+//   - ECR (Elastic Container Registry)
 //
 // Additional services can be added by implementing the [Service] interface.
 package awsmock

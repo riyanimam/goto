@@ -31,11 +31,11 @@ const defaultAccountID = "123456789012"
 
 // Service implements the IAM mock.
 type Service struct {
-	mu             sync.RWMutex
-	users          map[string]*user
-	roles          map[string]*role
-	policies       map[string]*policy
-	rolePolicies   map[string]map[string]bool // roleArn -> set of policyArns
+	mu           sync.RWMutex
+	users        map[string]*user
+	roles        map[string]*role
+	policies     map[string]*policy
+	rolePolicies map[string]map[string]bool // roleArn -> set of policyArns
 }
 
 type user struct {
@@ -47,22 +47,22 @@ type user struct {
 }
 
 type role struct {
-	name                 string
-	arn                  string
-	roleID               string
-	path                 string
-	assumeRolePolicyDoc  string
-	description          string
-	created              time.Time
+	name                string
+	arn                 string
+	roleID              string
+	path                string
+	assumeRolePolicyDoc string
+	description         string
+	created             time.Time
 }
 
 type policy struct {
-	name       string
-	arn        string
-	policyID   string
-	path       string
-	document   string
-	created    time.Time
+	name     string
+	arn      string
+	policyID string
+	path     string
+	document string
+	created  time.Time
 }
 
 // New creates a new IAM mock service.
@@ -506,7 +506,9 @@ type createUserResponse struct {
 	Result    createUserResult `xml:"CreateUserResult"`
 	RequestID string           `xml:"ResponseMetadata>RequestId"`
 }
-type createUserResult struct{ User iamUser `xml:"User"` }
+type createUserResult struct {
+	User iamUser `xml:"User"`
+}
 
 type getUserResponse struct {
 	XMLName   xml.Name      `xml:"GetUserResponse"`
@@ -514,7 +516,9 @@ type getUserResponse struct {
 	Result    getUserResult `xml:"GetUserResult"`
 	RequestID string        `xml:"ResponseMetadata>RequestId"`
 }
-type getUserResult struct{ User iamUser `xml:"User"` }
+type getUserResult struct {
+	User iamUser `xml:"User"`
+}
 
 type deleteUserResponse struct {
 	XMLName   xml.Name `xml:"DeleteUserResponse"`
@@ -539,7 +543,9 @@ type createRoleResponse struct {
 	Result    createRoleResult `xml:"CreateRoleResult"`
 	RequestID string           `xml:"ResponseMetadata>RequestId"`
 }
-type createRoleResult struct{ Role iamRole `xml:"Role"` }
+type createRoleResult struct {
+	Role iamRole `xml:"Role"`
+}
 
 type getRoleResponse struct {
 	XMLName   xml.Name      `xml:"GetRoleResponse"`
@@ -547,7 +553,9 @@ type getRoleResponse struct {
 	Result    getRoleResult `xml:"GetRoleResult"`
 	RequestID string        `xml:"ResponseMetadata>RequestId"`
 }
-type getRoleResult struct{ Role iamRole `xml:"Role"` }
+type getRoleResult struct {
+	Role iamRole `xml:"Role"`
+}
 
 type deleteRoleResponse struct {
 	XMLName   xml.Name `xml:"DeleteRoleResponse"`
@@ -572,7 +580,9 @@ type createPolicyResponse struct {
 	Result    createPolicyResult `xml:"CreatePolicyResult"`
 	RequestID string             `xml:"ResponseMetadata>RequestId"`
 }
-type createPolicyResult struct{ Policy iamPolicy `xml:"Policy"` }
+type createPolicyResult struct {
+	Policy iamPolicy `xml:"Policy"`
+}
 
 type getPolicyResponse struct {
 	XMLName   xml.Name        `xml:"GetPolicyResponse"`
@@ -580,7 +590,9 @@ type getPolicyResponse struct {
 	Result    getPolicyResult `xml:"GetPolicyResult"`
 	RequestID string          `xml:"ResponseMetadata>RequestId"`
 }
-type getPolicyResult struct{ Policy iamPolicy `xml:"Policy"` }
+type getPolicyResult struct {
+	Policy iamPolicy `xml:"Policy"`
+}
 
 type deletePolicyResponse struct {
 	XMLName   xml.Name `xml:"DeletePolicyResponse"`

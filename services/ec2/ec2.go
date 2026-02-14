@@ -40,15 +40,15 @@ type Service struct {
 }
 
 type instance struct {
-	id            string
-	imageID       string
-	instanceType  string
-	state         string
-	stateCode     int
-	launchTime    time.Time
-	subnetID      string
-	vpcID         string
-	privateIP     string
+	id           string
+	imageID      string
+	instanceType string
+	state        string
+	stateCode    int
+	launchTime   time.Time
+	subnetID     string
+	vpcID        string
+	privateIP    string
 }
 
 type vpc struct {

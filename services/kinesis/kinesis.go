@@ -309,8 +309,8 @@ func (s *Service) getRecords(w http.ResponseWriter, params map[string]interface{
 	nextIterator := base64.StdEncoding.EncodeToString([]byte(name + ":" + fmt.Sprintf("%d", len(records))))
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"Records":           records,
-		"NextShardIterator": nextIterator,
+		"Records":            records,
+		"NextShardIterator":  nextIterator,
 		"MillisBehindLatest": 0,
 	})
 }

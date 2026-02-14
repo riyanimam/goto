@@ -286,8 +286,8 @@ func (s *Service) batchGetImage(w http.ResponseWriter, params map[string]interfa
 		}
 		if !found {
 			failures = append(failures, map[string]interface{}{
-				"imageId":     idMap,
-				"failureCode": "ImageNotFound",
+				"imageId":       idMap,
+				"failureCode":   "ImageNotFound",
 				"failureReason": "Requested image not found",
 			})
 		}

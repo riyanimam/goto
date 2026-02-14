@@ -28,10 +28,10 @@ const defaultAccountID = "123456789012"
 
 // Service implements the EventBridge mock.
 type Service struct {
-	mu        sync.RWMutex
-	buses     map[string]*eventBus // keyed by name
-	rules     map[string]*rule     // keyed by name
-	targets   map[string][]*target // keyed by rule name
+	mu      sync.RWMutex
+	buses   map[string]*eventBus // keyed by name
+	rules   map[string]*rule     // keyed by name
+	targets map[string][]*target // keyed by rule name
 }
 
 type eventBus struct {
@@ -40,13 +40,13 @@ type eventBus struct {
 }
 
 type rule struct {
-	name           string
-	arn            string
-	eventBusName   string
-	eventPattern   string
-	scheduleExpr   string
-	state          string
-	description    string
+	name         string
+	arn          string
+	eventBusName string
+	eventPattern string
+	scheduleExpr string
+	state        string
+	description  string
 }
 
 type target struct {

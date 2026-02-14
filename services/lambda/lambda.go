@@ -299,19 +299,19 @@ func (s *Service) updateFunctionConfiguration(w http.ResponseWriter, r *http.Req
 
 func (s *Service) functionConfig(fn *function) map[string]interface{} {
 	cfg := map[string]interface{}{
-		"FunctionName":   fn.name,
-		"FunctionArn":    fn.arn,
-		"Runtime":        fn.runtime,
-		"Role":           fn.role,
-		"Handler":        fn.handler,
-		"Description":    fn.description,
-		"Timeout":        fn.timeout,
-		"MemorySize":     fn.memorySize,
-		"CodeSize":       fn.codeSize,
-		"CodeSha256":     fn.codeSHA256,
-		"Version":        fn.version,
-		"LastModified":   fn.lastModified,
-		"State":          "Active",
+		"FunctionName":     fn.name,
+		"FunctionArn":      fn.arn,
+		"Runtime":          fn.runtime,
+		"Role":             fn.role,
+		"Handler":          fn.handler,
+		"Description":      fn.description,
+		"Timeout":          fn.timeout,
+		"MemorySize":       fn.memorySize,
+		"CodeSize":         fn.codeSize,
+		"CodeSha256":       fn.codeSHA256,
+		"Version":          fn.version,
+		"LastModified":     fn.lastModified,
+		"State":            "Active",
 		"LastUpdateStatus": "Successful",
 	}
 	if fn.environment != nil {

@@ -189,7 +189,7 @@ func (s *Service) getParameters(w http.ResponseWriter, params map[string]interfa
 	s.mu.RUnlock()
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"Parameters":       found,
+		"Parameters":        found,
 		"InvalidParameters": invalid,
 	})
 }

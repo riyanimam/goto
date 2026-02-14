@@ -20,6 +20,7 @@ that uses the AWS SDK for Go v2 without making any real API calls.
 - **Thread-safe** — safe for parallel tests
 - **Pure Go** — no Python, no Docker, no external processes
 - **AWS SDK v2** — works with `github.com/aws/aws-sdk-go-v2`
+- **16 services** — broad coverage of the most commonly used AWS services
 
 ## Supported Services
 
@@ -31,6 +32,16 @@ that uses the AWS SDK for Go v2 without making any real API calls.
 | **DynamoDB** | CreateTable, DeleteTable, DescribeTable, ListTables, PutItem, GetItem, DeleteItem, Query, Scan |
 | **SNS** | CreateTopic, DeleteTopic, ListTopics, Subscribe, Unsubscribe, ListSubscriptions, Publish |
 | **Secrets Manager** | CreateSecret, GetSecretValue, PutSecretValue, DeleteSecret, ListSecrets, DescribeSecret, UpdateSecret |
+| **Lambda** | CreateFunction, GetFunction, DeleteFunction, ListFunctions, Invoke, UpdateFunctionCode, UpdateFunctionConfiguration |
+| **CloudWatch Logs** | CreateLogGroup, DeleteLogGroup, DescribeLogGroups, CreateLogStream, DeleteLogStream, DescribeLogStreams, PutLogEvents, GetLogEvents, FilterLogEvents |
+| **IAM** | CreateUser, GetUser, DeleteUser, ListUsers, CreateRole, GetRole, DeleteRole, ListRoles, CreatePolicy, GetPolicy, DeletePolicy, ListPolicies, AttachRolePolicy, DetachRolePolicy |
+| **EC2** | RunInstances, DescribeInstances, TerminateInstances, CreateVpc, DescribeVpcs, DeleteVpc, CreateSecurityGroup, DescribeSecurityGroups, DeleteSecurityGroup, CreateSubnet, DescribeSubnets, DeleteSubnet |
+| **Kinesis** | CreateStream, DeleteStream, DescribeStream, ListStreams, PutRecord, GetRecords, GetShardIterator |
+| **EventBridge** | CreateEventBus, DeleteEventBus, ListEventBuses, PutRule, DeleteRule, ListRules, PutTargets, RemoveTargets, ListTargetsByRule, PutEvents |
+| **SSM Parameter Store** | PutParameter, GetParameter, GetParameters, DeleteParameter, DescribeParameters, GetParametersByPath |
+| **KMS** | CreateKey, DescribeKey, ListKeys, Encrypt, Decrypt, GenerateDataKey, CreateAlias, ListAliases, DeleteAlias, ScheduleKeyDeletion |
+| **CloudFormation** | CreateStack, DeleteStack, DescribeStacks, ListStacks, UpdateStack |
+| **ECR** | CreateRepository, DeleteRepository, DescribeRepositories, ListImages, PutImage, BatchGetImage, GetAuthorizationToken |
 
 ## Installation
 
@@ -109,7 +120,185 @@ func TestUploadToS3(t *testing.T) {
 }
 ```
 
-## Usage with SQS
+## How It Works
+
+1. **`awsmock.Start(t)`** starts an `httptest.Server` that accepts all AWS SDK requests.
+2. **`mock.AWSConfig(ctx)`** returns an `aws.Config` with:
+   - `BaseEndpoint` pointing to the mock server
+   - Static test credentials (`AKIAIOSFODNN7EXAMPLE`)
+   - Region set to `us-east-1`
+3. You pass this config to any AWS SDK v2 client (`s3.NewFromConfig(cfg)`, etc.).
+4. The mock server routes each request to the correct service handler based on the
+   `Authorization` header credential scope or the `X-Amz-Target` header.
+5. Each service stores state in memory (maps, slices) with mutex-based thread safety.
+6. When your test finishes, `t.Cleanup` automatically shuts down the server.
+
+## Usage Examples
+
+### DynamoDB
+
+```go
+func TestDynamoDB(t *testing.T) {
+    mock := awsmock.Start(t)
+    cfg, _ := mock.AWSConfig(context.Background())
+    client := dynamodb.NewFromConfig(cfg)
+    ctx := context.Background()
+
+    // Create table.
+    client.CreateTable(ctx, &dynamodb.CreateTableInput{
+        TableName: aws.String("users"),
+        KeySchema: []types.KeySchemaElement{
+            {AttributeName: aws.String("id"), KeyType: types.KeyTypeHash},
+        },
+        AttributeDefinitions: []types.AttributeDefinition{
+            {AttributeName: aws.String("id"), AttributeType: types.ScalarAttributeTypeS},
+        },
+        BillingMode: types.BillingModePayPerRequest,
+    })
+
+    // Put and get items.
+    client.PutItem(ctx, &dynamodb.PutItemInput{
+        TableName: aws.String("users"),
+        Item: map[string]types.AttributeValue{
+            "id":   &types.AttributeValueMemberS{Value: "1"},
+            "name": &types.AttributeValueMemberS{Value: "Alice"},
+        },
+    })
+}
+```
+
+### Lambda
+
+```go
+func TestLambda(t *testing.T) {
+    mock := awsmock.Start(t)
+    cfg, _ := mock.AWSConfig(context.Background())
+    client := lambda.NewFromConfig(cfg)
+    ctx := context.Background()
+
+    // Create function.
+    client.CreateFunction(ctx, &lambda.CreateFunctionInput{
+        FunctionName: aws.String("my-handler"),
+        Runtime:      types.RuntimePython312,
+        Role:         aws.String("arn:aws:iam::123456789012:role/lambda-role"),
+        Handler:      aws.String("index.handler"),
+        Code:         &types.FunctionCode{ZipFile: []byte("fake")},
+    })
+
+    // Invoke returns the payload you send (echo behavior).
+    resp, _ := client.Invoke(ctx, &lambda.InvokeInput{
+        FunctionName: aws.String("my-handler"),
+        Payload:      []byte(`{"key":"value"}`),
+    })
+    // resp.Payload == []byte(`{"key":"value"}`)
+}
+```
+
+### IAM
+
+```go
+func TestIAM(t *testing.T) {
+    mock := awsmock.Start(t)
+    cfg, _ := mock.AWSConfig(context.Background())
+    client := iam.NewFromConfig(cfg)
+    ctx := context.Background()
+
+    // Create role.
+    client.CreateRole(ctx, &iam.CreateRoleInput{
+        RoleName:                 aws.String("my-role"),
+        AssumeRolePolicyDocument: aws.String(`{"Version":"2012-10-17","Statement":[]}`),
+    })
+
+    // Create and attach policy.
+    policyResp, _ := client.CreatePolicy(ctx, &iam.CreatePolicyInput{
+        PolicyName:     aws.String("my-policy"),
+        PolicyDocument: aws.String(`{"Version":"2012-10-17","Statement":[]}`),
+    })
+    client.AttachRolePolicy(ctx, &iam.AttachRolePolicyInput{
+        RoleName:  aws.String("my-role"),
+        PolicyArn: policyResp.Policy.Arn,
+    })
+}
+```
+
+### EC2
+
+```go
+func TestEC2(t *testing.T) {
+    mock := awsmock.Start(t)
+    cfg, _ := mock.AWSConfig(context.Background())
+    client := ec2.NewFromConfig(cfg)
+    ctx := context.Background()
+
+    // Create VPC + run instances.
+    vpcResp, _ := client.CreateVpc(ctx, &ec2.CreateVpcInput{
+        CidrBlock: aws.String("10.0.0.0/16"),
+    })
+    runResp, _ := client.RunInstances(ctx, &ec2.RunInstancesInput{
+        ImageId:      aws.String("ami-12345678"),
+        InstanceType: "t2.micro",
+        MinCount:     aws.Int32(1),
+        MaxCount:     aws.Int32(1),
+    })
+
+    // Terminate when done.
+    client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
+        InstanceIds: []string{*runResp.Instances[0].InstanceId},
+    })
+    client.DeleteVpc(ctx, &ec2.DeleteVpcInput{VpcId: vpcResp.Vpc.VpcId})
+}
+```
+
+### SSM Parameter Store
+
+```go
+func TestSSM(t *testing.T) {
+    mock := awsmock.Start(t)
+    cfg, _ := mock.AWSConfig(context.Background())
+    client := ssm.NewFromConfig(cfg)
+    ctx := context.Background()
+
+    // Store and retrieve configuration.
+    client.PutParameter(ctx, &ssm.PutParameterInput{
+        Name:  aws.String("/app/db/host"),
+        Value: aws.String("localhost"),
+        Type:  types.ParameterTypeString,
+    })
+
+    resp, _ := client.GetParameter(ctx, &ssm.GetParameterInput{
+        Name: aws.String("/app/db/host"),
+    })
+    // *resp.Parameter.Value == "localhost"
+}
+```
+
+### KMS
+
+```go
+func TestKMS(t *testing.T) {
+    mock := awsmock.Start(t)
+    cfg, _ := mock.AWSConfig(context.Background())
+    client := kms.NewFromConfig(cfg)
+    ctx := context.Background()
+
+    // Create a key and encrypt/decrypt.
+    keyResp, _ := client.CreateKey(ctx, &kms.CreateKeyInput{
+        Description: aws.String("test key"),
+    })
+
+    encResp, _ := client.Encrypt(ctx, &kms.EncryptInput{
+        KeyId:     keyResp.KeyMetadata.KeyId,
+        Plaintext: []byte("secret"),
+    })
+
+    decResp, _ := client.Decrypt(ctx, &kms.DecryptInput{
+        CiphertextBlob: encResp.CiphertextBlob,
+    })
+    // string(decResp.Plaintext) == "secret"
+}
+```
+
+### SQS
 
 ```go
 func TestSendAndReceive(t *testing.T) {
@@ -145,7 +334,7 @@ func TestSendAndReceive(t *testing.T) {
 }
 ```
 
-## Usage with STS
+### STS
 
 ```go
 func TestCallerIdentity(t *testing.T) {
@@ -166,6 +355,77 @@ func TestCallerIdentity(t *testing.T) {
     if *resp.Account != "123456789012" {
         t.Errorf("unexpected account: %s", *resp.Account)
     }
+}
+```
+
+## How to Use This Package in Your Project
+
+### Step 1: Add the dependency
+
+```bash
+go get github.com/riyanimam/goto
+```
+
+### Step 2: Import and start in your test
+
+```go
+import awsmock "github.com/riyanimam/goto"
+
+func TestMyFunction(t *testing.T) {
+    mock := awsmock.Start(t)
+    cfg, _ := mock.AWSConfig(context.Background())
+    // Pass cfg to your code that creates AWS clients
+}
+```
+
+### Step 3: Refactor your production code to accept aws.Config
+
+The key design pattern is **dependency injection of the AWS config**. Instead of
+creating AWS clients with hardcoded configs, pass `aws.Config` as a parameter:
+
+```go
+// ❌ Hard to test
+func ProcessOrders() {
+    cfg, _ := config.LoadDefaultConfig(context.Background())
+    client := sqs.NewFromConfig(cfg)
+    // ...
+}
+
+// ✅ Testable — inject the config
+func ProcessOrders(cfg aws.Config) {
+    client := sqs.NewFromConfig(cfg)
+    // ...
+}
+
+// In tests:
+func TestProcessOrders(t *testing.T) {
+    mock := awsmock.Start(t)
+    cfg, _ := mock.AWSConfig(context.Background())
+    ProcessOrders(cfg) // Uses mock server
+}
+
+// In production:
+func main() {
+    cfg, _ := config.LoadDefaultConfig(context.Background())
+    ProcessOrders(cfg) // Uses real AWS
+}
+```
+
+### Step 4: Reset state between subtests if needed
+
+```go
+func TestMultipleScenarios(t *testing.T) {
+    mock := awsmock.Start(t)
+
+    t.Run("scenario1", func(t *testing.T) {
+        // ... create resources ...
+    })
+
+    mock.Reset() // Clear all service state
+
+    t.Run("scenario2", func(t *testing.T) {
+        // Fresh state, no leftover resources
+    })
 }
 ```
 
@@ -200,12 +460,16 @@ mock := awsmock.Start(t, awsmock.WithService(myCustomService))
 │         MockServer               │
 │   net/http/httptest.Server       │
 │   Routes by Authorization header │
+│   or X-Amz-Target header        │
 └──────────────┬───────────────────┘
                │
 ┌──────────────▼───────────────────┐
 │       Service Handlers           │
-│   S3, SQS, STS, DynamoDB,       │
-│   SNS, Secrets Manager           │
+│   S3, SQS, STS, DynamoDB, SNS,  │
+│   Secrets Manager, Lambda,       │
+│   CloudWatch Logs, IAM, EC2,     │
+│   Kinesis, EventBridge, SSM,     │
+│   KMS, CloudFormation, ECR       │
 │   (in-memory, thread-safe)       │
 └──────────────────────────────────┘
 ```
