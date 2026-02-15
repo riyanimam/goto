@@ -34,6 +34,7 @@ import (
 	"github.com/riyanimam/goto/services/firehose"
 	"github.com/riyanimam/goto/services/glue"
 	"github.com/riyanimam/goto/services/iam"
+	"github.com/riyanimam/goto/services/kafka"
 	"github.com/riyanimam/goto/services/kinesis"
 	"github.com/riyanimam/goto/services/kms"
 	"github.com/riyanimam/goto/services/lambda"
@@ -116,5 +117,6 @@ func builtinServices() []Service {
 		applicationautoscaling.New(),
 		resourcegroupstaggingapi.New(),
 		appsync.New(),
+		kafka.New(),
 	}
 }
