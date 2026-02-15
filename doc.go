@@ -75,6 +75,16 @@
 //   - OpenSearch
 //   - Service Discovery (Cloud Map)
 //   - Transfer Family (SFTP/FTPS/FTP)
+//   - Application Auto Scaling
+//   - Resource Groups Tagging API
+//   - SSO Admin (IAM Identity Center)
+//   - AppSync (GraphQL)
+//   - MSK (Managed Streaming for Kafka)
+//   - Neptune (Graph Database)
+//   - GuardDuty (Threat Detection)
+//   - Amazon MQ (Message Broker)
+//   - DAX (DynamoDB Accelerator)
+//   - FSx (Managed File Systems)
 //
 // Additional services can be added by implementing the [Service] interface.
 package awsmock

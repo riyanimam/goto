@@ -218,6 +218,14 @@ func (m *MockServer) identifyService(r *http.Request) string {
 				return "transfer"
 			case strings.Contains(name, "awssimba"):
 				return "fsx"
+			case strings.Contains(name, "anyscalefrontendservice"):
+				return "application-autoscaling"
+			case strings.Contains(name, "resourcegroupstaggingapi"):
+				return "tagging"
+			case strings.Contains(name, "swbexternalservice"):
+				return "sso"
+			case strings.Contains(name, "amazondaxv3"):
+				return "dax"
 			}
 		}
 	}

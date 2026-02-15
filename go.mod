@@ -70,13 +70,23 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.17 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.17 // indirect
+	github.com/aws/aws-sdk-go-v2/service/applicationautoscaling v1.41.10 // indirect
+	github.com/aws/aws-sdk-go-v2/service/appsync v1.53.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/dax v1.29.12 // indirect
+	github.com/aws/aws-sdk-go-v2/service/fsx v1.65.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/guardduty v1.73.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.17 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.17 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.17 // indirect
+	github.com/aws/aws-sdk-go-v2/service/kafka v1.47.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/mq v1.34.15 // indirect
+	github.com/aws/aws-sdk-go-v2/service/neptune v1.43.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.31.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.30.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssoadmin v1.37.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.13 // indirect
 	github.com/aws/smithy-go v1.24.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect

@@ -190,8 +190,8 @@ func (s *Service) updateDetector(w http.ResponseWriter, r *http.Request, path st
 
 func detectorResp(d *detector) map[string]interface{} {
 	return map[string]interface{}{
-		"createdAt":                  float64(d.created.Unix()),
-		"updatedAt":                  float64(d.updated.Unix()),
+		"createdAt":                  d.created.Format(time.RFC3339),
+		"updatedAt":                  d.updated.Format(time.RFC3339),
 		"status":                     d.status,
 		"findingPublishingFrequency": d.findingPublishingFrequency,
 		"serviceRole":                d.serviceRole,

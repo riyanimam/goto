@@ -20,7 +20,7 @@ that uses the AWS SDK for Go v2 without making any real API calls.
 - **Thread-safe** — safe for parallel tests
 - **Pure Go** — no Python, no Docker, no external processes
 - **AWS SDK v2** — works with `github.com/aws/aws-sdk-go-v2`
-- **52 services** — broad coverage of the most commonly used AWS services
+- **62 services** — broad coverage of the most commonly used AWS services
 
 ## Supported Services
 
@@ -78,6 +78,16 @@ that uses the AWS SDK for Go v2 without making any real API calls.
 | **OpenSearch** | CreateDomain, DescribeDomain, DeleteDomain, ListDomainNames, UpdateDomainConfig |
 | **Service Discovery** | CreatePrivateDnsNamespace, CreateService, GetService, DeleteService, ListServices, RegisterInstance, DeregisterInstance, ListInstances |
 | **Transfer Family** | CreateServer, DescribeServer, DeleteServer, ListServers, CreateUser, DescribeUser, DeleteUser |
+| **Application Auto Scaling** | RegisterScalableTarget, DescribeScalableTargets, DeregisterScalableTarget, PutScalingPolicy, DescribeScalingPolicies, DeleteScalingPolicy |
+| **Resource Groups Tagging API** | TagResources, UntagResources, GetResources, GetTagKeys, GetTagValues |
+| **SSO Admin** | CreatePermissionSet, DescribePermissionSet, DeletePermissionSet, ListPermissionSets, CreateAccountAssignment, ListAccountAssignments |
+| **AppSync** | CreateGraphqlApi, GetGraphqlApi, DeleteGraphqlApi, ListGraphqlApis, CreateDataSource, GetDataSource, DeleteDataSource |
+| **MSK (Kafka)** | CreateCluster, DescribeCluster, DeleteCluster, ListClusters, UpdateBrokerCount |
+| **Neptune** | CreateDBCluster, DescribeDBClusters, DeleteDBCluster, ModifyDBCluster, CreateDBInstance, DescribeDBInstances, DeleteDBInstance |
+| **GuardDuty** | CreateDetector, GetDetector, DeleteDetector, ListDetectors, UpdateDetector |
+| **Amazon MQ** | CreateBroker, DescribeBroker, DeleteBroker, ListBrokers, UpdateBroker |
+| **DAX** | CreateCluster, DescribeClusters, DeleteCluster, ListTags, CreateSubnetGroup, DescribeSubnetGroups, DeleteSubnetGroup |
+| **FSx** | CreateFileSystem, DescribeFileSystems, DeleteFileSystem, UpdateFileSystem, TagResource |
 
 ## Installation
 
@@ -520,6 +530,85 @@ mock := awsmock.Start(t, awsmock.WithService(myCustomService))
 │   (in-memory, thread-safe)       │
 └──────────────────────────────────┘
 ```
+
+## Best Practices & Recommendations
+
+### 1. Use `t.Parallel()` for Independent Tests
+
+Each call to `awsmock.Start(t)` creates an isolated mock server. Tests using
+separate instances can safely run in parallel:
+
+```go
+func TestFeatureA(t *testing.T) {
+    t.Parallel()
+    mock := awsmock.Start(t)
+    // ...
+}
+```
+
+### 2. Use Dependency Injection
+
+Design your production code to accept an `aws.Config` so the mock can be injected:
+
+```go
+// Production code
+func NewService(cfg aws.Config) *MyService {
+    return &MyService{s3: s3.NewFromConfig(cfg)}
+}
+
+// Test code
+func TestMyService(t *testing.T) {
+    mock := awsmock.Start(t)
+    cfg, _ := mock.AWSConfig(context.Background())
+    svc := NewService(cfg) // Uses mock instead of real AWS
+}
+```
+
+### 3. Test Error Paths
+
+Mock services return realistic AWS errors. Test that your code handles them:
+
+```go
+// Attempt to get a non-existent resource
+_, err := client.GetFunction(ctx, &lambda.GetFunctionInput{
+    FunctionName: aws.String("does-not-exist"),
+})
+// err will be a ResourceNotFoundException — test your error handling!
+```
+
+### 4. Reset State Between Subtests
+
+Use `mock.Reset()` to clear all service state without restarting the server:
+
+```go
+func TestCRUD(t *testing.T) {
+    mock := awsmock.Start(t)
+    // ... create resources ...
+
+    mock.Reset() // Clears all data
+    // ... verify clean state ...
+}
+```
+
+### 5. Keep Mock Tests Fast
+
+- Avoid `time.Sleep` — mock responses are immediate
+- Use `-race` flag in CI to catch concurrency issues
+- Run with `-count=1` to avoid test caching
+
+### 6. Extend with Custom Services
+
+For services not yet supported, implement the `awsmock.Service` interface:
+
+```go
+type Service interface {
+    Name() string
+    Handler() http.Handler
+    Reset()
+}
+```
+
+And register it with `awsmock.WithService(myService)`.
 
 ## Development
 

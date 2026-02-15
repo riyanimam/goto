@@ -10,6 +10,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/apigateway"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2"
+	"github.com/aws/aws-sdk-go-v2/service/applicationautoscaling"
+	applicationautoscalingtypes "github.com/aws/aws-sdk-go-v2/service/applicationautoscaling/types"
+	"github.com/aws/aws-sdk-go-v2/service/appsync"
+	appsynctypes "github.com/aws/aws-sdk-go-v2/service/appsync/types"
 	"github.com/aws/aws-sdk-go-v2/service/athena"
 	athenatypes "github.com/aws/aws-sdk-go-v2/service/athena/types"
 	"github.com/aws/aws-sdk-go-v2/service/autoscaling"
@@ -33,6 +37,7 @@ import (
 	cidptypes "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 	"github.com/aws/aws-sdk-go-v2/service/configservice"
 	configtypes "github.com/aws/aws-sdk-go-v2/service/configservice/types"
+	"github.com/aws/aws-sdk-go-v2/service/dax"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodbstreams"
@@ -52,17 +57,26 @@ import (
 	ebtypes "github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 	"github.com/aws/aws-sdk-go-v2/service/firehose"
 	firehosetypes "github.com/aws/aws-sdk-go-v2/service/firehose/types"
+	"github.com/aws/aws-sdk-go-v2/service/fsx"
+	fsxtypes "github.com/aws/aws-sdk-go-v2/service/fsx/types"
 	"github.com/aws/aws-sdk-go-v2/service/glue"
 	gluetypes "github.com/aws/aws-sdk-go-v2/service/glue/types"
+	"github.com/aws/aws-sdk-go-v2/service/guardduty"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/kafka"
+	kafkatypes "github.com/aws/aws-sdk-go-v2/service/kafka/types"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	lambdatypes "github.com/aws/aws-sdk-go-v2/service/lambda/types"
+	"github.com/aws/aws-sdk-go-v2/service/mq"
+	mqtypes "github.com/aws/aws-sdk-go-v2/service/mq/types"
+	"github.com/aws/aws-sdk-go-v2/service/neptune"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	"github.com/aws/aws-sdk-go-v2/service/organizations"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/redshift"
+	"github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -78,6 +92,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	ssmtypes "github.com/aws/aws-sdk-go-v2/service/ssm/types"
+	"github.com/aws/aws-sdk-go-v2/service/ssoadmin"
+	ssoadmintypes "github.com/aws/aws-sdk-go-v2/service/ssoadmin/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/aws-sdk-go-v2/service/transfer"
 	transfertypes "github.com/aws/aws-sdk-go-v2/service/transfer/types"
@@ -4724,5 +4740,614 @@ func TestTransferServerOperations(t *testing.T) {
 	}
 	if len(listResp.Servers) != 0 {
 		t.Errorf("expected 0 servers after delete, got %d", len(listResp.Servers))
+	}
+}
+
+// TestApplicationAutoScalingOperations verifies the Application Auto Scaling mock.
+func TestApplicationAutoScalingOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := applicationautoscaling.NewFromConfig(cfg)
+
+	// Register scalable target.
+	_, err = client.RegisterScalableTarget(ctx, &applicationautoscaling.RegisterScalableTargetInput{
+		ServiceNamespace:  applicationautoscalingtypes.ServiceNamespaceEcs,
+		ResourceId:        aws.String("service/default/my-service"),
+		ScalableDimension: applicationautoscalingtypes.ScalableDimensionECSServiceDesiredCount,
+		MinCapacity:       aws.Int32(1),
+		MaxCapacity:       aws.Int32(10),
+	})
+	if err != nil {
+		t.Fatalf("RegisterScalableTarget: %v", err)
+	}
+
+	// Describe scalable targets.
+	descResp, err := client.DescribeScalableTargets(ctx, &applicationautoscaling.DescribeScalableTargetsInput{
+		ServiceNamespace: applicationautoscalingtypes.ServiceNamespaceEcs,
+	})
+	if err != nil {
+		t.Fatalf("DescribeScalableTargets: %v", err)
+	}
+	if len(descResp.ScalableTargets) != 1 {
+		t.Fatalf("expected 1 scalable target, got %d", len(descResp.ScalableTargets))
+	}
+
+	// Deregister scalable target.
+	_, err = client.DeregisterScalableTarget(ctx, &applicationautoscaling.DeregisterScalableTargetInput{
+		ServiceNamespace:  applicationautoscalingtypes.ServiceNamespaceEcs,
+		ResourceId:        aws.String("service/default/my-service"),
+		ScalableDimension: applicationautoscalingtypes.ScalableDimensionECSServiceDesiredCount,
+	})
+	if err != nil {
+		t.Fatalf("DeregisterScalableTarget: %v", err)
+	}
+
+	// Verify deregistered.
+	descResp, err = client.DescribeScalableTargets(ctx, &applicationautoscaling.DescribeScalableTargetsInput{
+		ServiceNamespace: applicationautoscalingtypes.ServiceNamespaceEcs,
+	})
+	if err != nil {
+		t.Fatalf("DescribeScalableTargets after deregister: %v", err)
+	}
+	if len(descResp.ScalableTargets) != 0 {
+		t.Errorf("expected 0 scalable targets after deregister, got %d", len(descResp.ScalableTargets))
+	}
+}
+
+// TestResourceGroupsTaggingAPIOperations verifies the Resource Groups Tagging API mock.
+func TestResourceGroupsTaggingAPIOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := resourcegroupstaggingapi.NewFromConfig(cfg)
+
+	// Tag resources.
+	_, err = client.TagResources(ctx, &resourcegroupstaggingapi.TagResourcesInput{
+		ResourceARNList: []string{
+			"arn:aws:s3:::my-bucket",
+			"arn:aws:ec2:us-east-1:123456789012:instance/i-12345",
+		},
+		Tags: map[string]string{
+			"Environment": "production",
+			"Team":        "platform",
+		},
+	})
+	if err != nil {
+		t.Fatalf("TagResources: %v", err)
+	}
+
+	// Get resources.
+	getResp, err := client.GetResources(ctx, &resourcegroupstaggingapi.GetResourcesInput{})
+	if err != nil {
+		t.Fatalf("GetResources: %v", err)
+	}
+	if len(getResp.ResourceTagMappingList) != 2 {
+		t.Fatalf("expected 2 tagged resources, got %d", len(getResp.ResourceTagMappingList))
+	}
+
+	// Get tag keys.
+	keysResp, err := client.GetTagKeys(ctx, &resourcegroupstaggingapi.GetTagKeysInput{})
+	if err != nil {
+		t.Fatalf("GetTagKeys: %v", err)
+	}
+	if len(keysResp.TagKeys) != 2 {
+		t.Errorf("expected 2 tag keys, got %d", len(keysResp.TagKeys))
+	}
+
+	// Get tag values.
+	valsResp, err := client.GetTagValues(ctx, &resourcegroupstaggingapi.GetTagValuesInput{
+		Key: aws.String("Environment"),
+	})
+	if err != nil {
+		t.Fatalf("GetTagValues: %v", err)
+	}
+	if len(valsResp.TagValues) != 1 || valsResp.TagValues[0] != "production" {
+		t.Errorf("expected tag value 'production', got %v", valsResp.TagValues)
+	}
+
+	// Untag resources.
+	_, err = client.UntagResources(ctx, &resourcegroupstaggingapi.UntagResourcesInput{
+		ResourceARNList: []string{"arn:aws:s3:::my-bucket"},
+		TagKeys:         []string{"Environment"},
+	})
+	if err != nil {
+		t.Fatalf("UntagResources: %v", err)
+	}
+}
+
+// TestSSOAdminOperations verifies the SSO Admin mock.
+func TestSSOAdminOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := ssoadmin.NewFromConfig(cfg)
+	instanceArn := "arn:aws:sso:::instance/ssoins-1234567890abcdef"
+
+	// Create permission set.
+	createResp, err := client.CreatePermissionSet(ctx, &ssoadmin.CreatePermissionSetInput{
+		InstanceArn:     aws.String(instanceArn),
+		Name:            aws.String("AdminAccess"),
+		Description:     aws.String("Full admin access"),
+		SessionDuration: aws.String("PT8H"),
+	})
+	if err != nil {
+		t.Fatalf("CreatePermissionSet: %v", err)
+	}
+	if createResp.PermissionSet == nil || createResp.PermissionSet.PermissionSetArn == nil {
+		t.Fatal("expected permission set with ARN")
+	}
+	permSetArn := *createResp.PermissionSet.PermissionSetArn
+
+	// List permission sets.
+	listResp, err := client.ListPermissionSets(ctx, &ssoadmin.ListPermissionSetsInput{
+		InstanceArn: aws.String(instanceArn),
+	})
+	if err != nil {
+		t.Fatalf("ListPermissionSets: %v", err)
+	}
+	if len(listResp.PermissionSets) != 1 {
+		t.Fatalf("expected 1 permission set, got %d", len(listResp.PermissionSets))
+	}
+
+	// Describe permission set.
+	descResp, err := client.DescribePermissionSet(ctx, &ssoadmin.DescribePermissionSetInput{
+		InstanceArn:      aws.String(instanceArn),
+		PermissionSetArn: aws.String(permSetArn),
+	})
+	if err != nil {
+		t.Fatalf("DescribePermissionSet: %v", err)
+	}
+	if descResp.PermissionSet == nil || *descResp.PermissionSet.Name != "AdminAccess" {
+		t.Errorf("expected name AdminAccess, got %v", descResp.PermissionSet)
+	}
+
+	// Create account assignment.
+	_, err = client.CreateAccountAssignment(ctx, &ssoadmin.CreateAccountAssignmentInput{
+		InstanceArn:      aws.String(instanceArn),
+		PermissionSetArn: aws.String(permSetArn),
+		PrincipalId:      aws.String("user-123"),
+		PrincipalType:    ssoadmintypes.PrincipalTypeUser,
+		TargetId:         aws.String("123456789012"),
+		TargetType:       ssoadmintypes.TargetTypeAwsAccount,
+	})
+	if err != nil {
+		t.Fatalf("CreateAccountAssignment: %v", err)
+	}
+
+	// Delete permission set.
+	_, err = client.DeletePermissionSet(ctx, &ssoadmin.DeletePermissionSetInput{
+		InstanceArn:      aws.String(instanceArn),
+		PermissionSetArn: aws.String(permSetArn),
+	})
+	if err != nil {
+		t.Fatalf("DeletePermissionSet: %v", err)
+	}
+}
+
+// TestAppSyncOperations verifies the AppSync mock.
+func TestAppSyncOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := appsync.NewFromConfig(cfg)
+
+	// Create GraphQL API.
+	createResp, err := client.CreateGraphqlApi(ctx, &appsync.CreateGraphqlApiInput{
+		Name:               aws.String("my-api"),
+		AuthenticationType: appsynctypes.AuthenticationTypeApiKey,
+	})
+	if err != nil {
+		t.Fatalf("CreateGraphqlApi: %v", err)
+	}
+	if createResp.GraphqlApi == nil || createResp.GraphqlApi.ApiId == nil {
+		t.Fatal("expected graphql api with ID")
+	}
+	apiId := *createResp.GraphqlApi.ApiId
+
+	// Get GraphQL API.
+	getResp, err := client.GetGraphqlApi(ctx, &appsync.GetGraphqlApiInput{
+		ApiId: aws.String(apiId),
+	})
+	if err != nil {
+		t.Fatalf("GetGraphqlApi: %v", err)
+	}
+	if *getResp.GraphqlApi.Name != "my-api" {
+		t.Errorf("expected name my-api, got %s", *getResp.GraphqlApi.Name)
+	}
+
+	// List GraphQL APIs.
+	listResp, err := client.ListGraphqlApis(ctx, &appsync.ListGraphqlApisInput{})
+	if err != nil {
+		t.Fatalf("ListGraphqlApis: %v", err)
+	}
+	if len(listResp.GraphqlApis) != 1 {
+		t.Fatalf("expected 1 API, got %d", len(listResp.GraphqlApis))
+	}
+
+	// Delete GraphQL API.
+	_, err = client.DeleteGraphqlApi(ctx, &appsync.DeleteGraphqlApiInput{
+		ApiId: aws.String(apiId),
+	})
+	if err != nil {
+		t.Fatalf("DeleteGraphqlApi: %v", err)
+	}
+
+	// Verify deleted.
+	listResp, err = client.ListGraphqlApis(ctx, &appsync.ListGraphqlApisInput{})
+	if err != nil {
+		t.Fatalf("ListGraphqlApis after delete: %v", err)
+	}
+	if len(listResp.GraphqlApis) != 0 {
+		t.Errorf("expected 0 APIs after delete, got %d", len(listResp.GraphqlApis))
+	}
+}
+
+// TestMSKClusterOperations verifies the MSK/Kafka mock.
+func TestMSKClusterOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := kafka.NewFromConfig(cfg)
+
+	// Create cluster.
+	createResp, err := client.CreateCluster(ctx, &kafka.CreateClusterInput{
+		ClusterName:         aws.String("my-kafka-cluster"),
+		KafkaVersion:        aws.String("3.5.1"),
+		NumberOfBrokerNodes: aws.Int32(3),
+		BrokerNodeGroupInfo: &kafkatypes.BrokerNodeGroupInfo{
+			InstanceType:  aws.String("kafka.m5.large"),
+			ClientSubnets: []string{"subnet-1", "subnet-2", "subnet-3"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+	if createResp.ClusterArn == nil {
+		t.Fatal("expected cluster ARN")
+	}
+	clusterArn := *createResp.ClusterArn
+
+	// List clusters.
+	listResp, err := client.ListClusters(ctx, &kafka.ListClustersInput{})
+	if err != nil {
+		t.Fatalf("ListClusters: %v", err)
+	}
+	if len(listResp.ClusterInfoList) != 1 {
+		t.Fatalf("expected 1 cluster, got %d", len(listResp.ClusterInfoList))
+	}
+
+	// Delete cluster.
+	_, err = client.DeleteCluster(ctx, &kafka.DeleteClusterInput{
+		ClusterArn: aws.String(clusterArn),
+	})
+	if err != nil {
+		t.Fatalf("DeleteCluster: %v", err)
+	}
+
+	// Verify deleted.
+	listResp, err = client.ListClusters(ctx, &kafka.ListClustersInput{})
+	if err != nil {
+		t.Fatalf("ListClusters after delete: %v", err)
+	}
+	if len(listResp.ClusterInfoList) != 0 {
+		t.Errorf("expected 0 clusters after delete, got %d", len(listResp.ClusterInfoList))
+	}
+}
+
+// TestNeptuneClusterOperations verifies the Neptune mock.
+func TestNeptuneClusterOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := neptune.NewFromConfig(cfg)
+
+	// Create DB cluster.
+	_, err = client.CreateDBCluster(ctx, &neptune.CreateDBClusterInput{
+		DBClusterIdentifier: aws.String("my-neptune-cluster"),
+		Engine:              aws.String("neptune"),
+	})
+	if err != nil {
+		t.Fatalf("CreateDBCluster: %v", err)
+	}
+
+	// Describe DB clusters.
+	descResp, err := client.DescribeDBClusters(ctx, &neptune.DescribeDBClustersInput{})
+	if err != nil {
+		t.Fatalf("DescribeDBClusters: %v", err)
+	}
+	if len(descResp.DBClusters) != 1 {
+		t.Fatalf("expected 1 cluster, got %d", len(descResp.DBClusters))
+	}
+	if *descResp.DBClusters[0].DBClusterIdentifier != "my-neptune-cluster" {
+		t.Errorf("expected cluster ID my-neptune-cluster, got %s", *descResp.DBClusters[0].DBClusterIdentifier)
+	}
+
+	// Delete DB cluster.
+	_, err = client.DeleteDBCluster(ctx, &neptune.DeleteDBClusterInput{
+		DBClusterIdentifier: aws.String("my-neptune-cluster"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteDBCluster: %v", err)
+	}
+
+	// Verify deleted.
+	descResp, err = client.DescribeDBClusters(ctx, &neptune.DescribeDBClustersInput{})
+	if err != nil {
+		t.Fatalf("DescribeDBClusters after delete: %v", err)
+	}
+	if len(descResp.DBClusters) != 0 {
+		t.Errorf("expected 0 clusters after delete, got %d", len(descResp.DBClusters))
+	}
+}
+
+// TestGuardDutyDetectorOperations verifies the GuardDuty mock.
+func TestGuardDutyDetectorOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := guardduty.NewFromConfig(cfg)
+
+	// Create detector.
+	createResp, err := client.CreateDetector(ctx, &guardduty.CreateDetectorInput{
+		Enable: aws.Bool(true),
+	})
+	if err != nil {
+		t.Fatalf("CreateDetector: %v", err)
+	}
+	if createResp.DetectorId == nil || *createResp.DetectorId == "" {
+		t.Fatal("expected detector ID")
+	}
+	detectorId := *createResp.DetectorId
+
+	// Get detector.
+	getResp, err := client.GetDetector(ctx, &guardduty.GetDetectorInput{
+		DetectorId: aws.String(detectorId),
+	})
+	if err != nil {
+		t.Fatalf("GetDetector: %v", err)
+	}
+	if getResp.Status != "ENABLED" {
+		t.Errorf("expected status ENABLED, got %s", getResp.Status)
+	}
+
+	// List detectors.
+	listResp, err := client.ListDetectors(ctx, &guardduty.ListDetectorsInput{})
+	if err != nil {
+		t.Fatalf("ListDetectors: %v", err)
+	}
+	if len(listResp.DetectorIds) != 1 {
+		t.Fatalf("expected 1 detector, got %d", len(listResp.DetectorIds))
+	}
+
+	// Delete detector.
+	_, err = client.DeleteDetector(ctx, &guardduty.DeleteDetectorInput{
+		DetectorId: aws.String(detectorId),
+	})
+	if err != nil {
+		t.Fatalf("DeleteDetector: %v", err)
+	}
+
+	// Verify deleted.
+	listResp, err = client.ListDetectors(ctx, &guardduty.ListDetectorsInput{})
+	if err != nil {
+		t.Fatalf("ListDetectors after delete: %v", err)
+	}
+	if len(listResp.DetectorIds) != 0 {
+		t.Errorf("expected 0 detectors after delete, got %d", len(listResp.DetectorIds))
+	}
+}
+
+// TestMQBrokerOperations verifies the Amazon MQ mock.
+func TestMQBrokerOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := mq.NewFromConfig(cfg)
+
+	// Create broker.
+	createResp, err := client.CreateBroker(ctx, &mq.CreateBrokerInput{
+		BrokerName:         aws.String("my-broker"),
+		EngineType:         mqtypes.EngineTypeActivemq,
+		EngineVersion:      aws.String("5.17.6"),
+		HostInstanceType:   aws.String("mq.m5.large"),
+		DeploymentMode:     mqtypes.DeploymentModeSingleInstance,
+		PubliclyAccessible: aws.Bool(false),
+	})
+	if err != nil {
+		t.Fatalf("CreateBroker: %v", err)
+	}
+	if createResp.BrokerId == nil || *createResp.BrokerId == "" {
+		t.Fatal("expected broker ID")
+	}
+	brokerId := *createResp.BrokerId
+
+	// Describe broker.
+	descResp, err := client.DescribeBroker(ctx, &mq.DescribeBrokerInput{
+		BrokerId: aws.String(brokerId),
+	})
+	if err != nil {
+		t.Fatalf("DescribeBroker: %v", err)
+	}
+	if *descResp.BrokerName != "my-broker" {
+		t.Errorf("expected name my-broker, got %s", *descResp.BrokerName)
+	}
+
+	// List brokers.
+	listResp, err := client.ListBrokers(ctx, &mq.ListBrokersInput{})
+	if err != nil {
+		t.Fatalf("ListBrokers: %v", err)
+	}
+	if len(listResp.BrokerSummaries) != 1 {
+		t.Fatalf("expected 1 broker, got %d", len(listResp.BrokerSummaries))
+	}
+
+	// Delete broker.
+	_, err = client.DeleteBroker(ctx, &mq.DeleteBrokerInput{
+		BrokerId: aws.String(brokerId),
+	})
+	if err != nil {
+		t.Fatalf("DeleteBroker: %v", err)
+	}
+
+	// Verify deleted.
+	listResp, err = client.ListBrokers(ctx, &mq.ListBrokersInput{})
+	if err != nil {
+		t.Fatalf("ListBrokers after delete: %v", err)
+	}
+	if len(listResp.BrokerSummaries) != 0 {
+		t.Errorf("expected 0 brokers after delete, got %d", len(listResp.BrokerSummaries))
+	}
+}
+
+// TestDAXClusterOperations verifies the DAX mock.
+func TestDAXClusterOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := dax.NewFromConfig(cfg)
+
+	// Create cluster.
+	createResp, err := client.CreateCluster(ctx, &dax.CreateClusterInput{
+		ClusterName:       aws.String("my-dax-cluster"),
+		NodeType:          aws.String("dax.r5.large"),
+		ReplicationFactor: 3,
+		IamRoleArn:        aws.String("arn:aws:iam::123456789012:role/dax-role"),
+	})
+	if err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+	if createResp.Cluster == nil || createResp.Cluster.ClusterName == nil {
+		t.Fatal("expected cluster with name")
+	}
+
+	// Describe clusters.
+	descResp, err := client.DescribeClusters(ctx, &dax.DescribeClustersInput{})
+	if err != nil {
+		t.Fatalf("DescribeClusters: %v", err)
+	}
+	if len(descResp.Clusters) != 1 {
+		t.Fatalf("expected 1 cluster, got %d", len(descResp.Clusters))
+	}
+	if *descResp.Clusters[0].ClusterName != "my-dax-cluster" {
+		t.Errorf("expected cluster name my-dax-cluster, got %s", *descResp.Clusters[0].ClusterName)
+	}
+
+	// Delete cluster.
+	_, err = client.DeleteCluster(ctx, &dax.DeleteClusterInput{
+		ClusterName: aws.String("my-dax-cluster"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteCluster: %v", err)
+	}
+
+	// Verify deleted.
+	descResp, err = client.DescribeClusters(ctx, &dax.DescribeClustersInput{})
+	if err != nil {
+		t.Fatalf("DescribeClusters after delete: %v", err)
+	}
+	if len(descResp.Clusters) != 0 {
+		t.Errorf("expected 0 clusters after delete, got %d", len(descResp.Clusters))
+	}
+}
+
+// TestFSxFileSystemOperations verifies the FSx mock.
+func TestFSxFileSystemOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := fsx.NewFromConfig(cfg)
+
+	// Create file system.
+	createResp, err := client.CreateFileSystem(ctx, &fsx.CreateFileSystemInput{
+		FileSystemType:  fsxtypes.FileSystemTypeLustre,
+		StorageCapacity: aws.Int32(1200),
+		SubnetIds:       []string{"subnet-12345"},
+		Tags: []fsxtypes.Tag{
+			{Key: aws.String("Name"), Value: aws.String("my-fsx")},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateFileSystem: %v", err)
+	}
+	if createResp.FileSystem == nil || createResp.FileSystem.FileSystemId == nil {
+		t.Fatal("expected file system with ID")
+	}
+	fsId := *createResp.FileSystem.FileSystemId
+
+	// Describe file systems.
+	descResp, err := client.DescribeFileSystems(ctx, &fsx.DescribeFileSystemsInput{})
+	if err != nil {
+		t.Fatalf("DescribeFileSystems: %v", err)
+	}
+	if len(descResp.FileSystems) != 1 {
+		t.Fatalf("expected 1 file system, got %d", len(descResp.FileSystems))
+	}
+
+	// Delete file system.
+	_, err = client.DeleteFileSystem(ctx, &fsx.DeleteFileSystemInput{
+		FileSystemId: aws.String(fsId),
+	})
+	if err != nil {
+		t.Fatalf("DeleteFileSystem: %v", err)
+	}
+
+	// Verify deleted.
+	descResp, err = client.DescribeFileSystems(ctx, &fsx.DescribeFileSystemsInput{})
+	if err != nil {
+		t.Fatalf("DescribeFileSystems after delete: %v", err)
+	}
+	if len(descResp.FileSystems) != 0 {
+		t.Errorf("expected 0 file systems after delete, got %d", len(descResp.FileSystems))
 	}
 }

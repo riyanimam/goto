@@ -20,6 +20,7 @@ import (
 	"github.com/riyanimam/goto/services/cognitoidentity"
 	"github.com/riyanimam/goto/services/cognitoidp"
 	"github.com/riyanimam/goto/services/configservice"
+	"github.com/riyanimam/goto/services/dax"
 	"github.com/riyanimam/goto/services/dynamodb"
 	"github.com/riyanimam/goto/services/dynamodbstreams"
 	"github.com/riyanimam/goto/services/ec2"
@@ -34,12 +35,14 @@ import (
 	"github.com/riyanimam/goto/services/firehose"
 	"github.com/riyanimam/goto/services/fsx"
 	"github.com/riyanimam/goto/services/glue"
+	"github.com/riyanimam/goto/services/guardduty"
 	"github.com/riyanimam/goto/services/iam"
 	"github.com/riyanimam/goto/services/kafka"
 	"github.com/riyanimam/goto/services/kinesis"
 	"github.com/riyanimam/goto/services/kms"
 	"github.com/riyanimam/goto/services/lambda"
 	"github.com/riyanimam/goto/services/mq"
+	"github.com/riyanimam/goto/services/neptune"
 	"github.com/riyanimam/goto/services/opensearch"
 	"github.com/riyanimam/goto/services/organizations"
 	"github.com/riyanimam/goto/services/rds"
@@ -54,6 +57,7 @@ import (
 	"github.com/riyanimam/goto/services/sns"
 	"github.com/riyanimam/goto/services/sqs"
 	"github.com/riyanimam/goto/services/ssm"
+	"github.com/riyanimam/goto/services/ssoadmin"
 	"github.com/riyanimam/goto/services/stepfunctions"
 	"github.com/riyanimam/goto/services/sts"
 	"github.com/riyanimam/goto/services/transfer"
@@ -122,5 +126,9 @@ func builtinServices() []Service {
 		kafka.New(),
 		mq.New(),
 		fsx.New(),
+		guardduty.New(),
+		neptune.New(),
+		dax.New(),
+		ssoadmin.New(),
 	}
 }
