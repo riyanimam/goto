@@ -3,6 +3,7 @@ package awsmock
 import (
 	"github.com/riyanimam/goto/services/acm"
 	"github.com/riyanimam/goto/services/apigatewayv2"
+	"github.com/riyanimam/goto/services/autoscaling"
 	"github.com/riyanimam/goto/services/athena"
 	"github.com/riyanimam/goto/services/cloudformation"
 	"github.com/riyanimam/goto/services/cloudfront"
@@ -70,5 +71,6 @@ func builtinServices() []Service {
 		firehose.New(),
 		athena.New(),
 		glue.New(),
+		autoscaling.New(),
 	}
 }
