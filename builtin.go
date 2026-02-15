@@ -3,6 +3,7 @@ package awsmock
 import (
 	"github.com/riyanimam/goto/services/acm"
 	"github.com/riyanimam/goto/services/apigateway"
+	"github.com/riyanimam/goto/services/applicationautoscaling"
 	"github.com/riyanimam/goto/services/apigatewayv2"
 	"github.com/riyanimam/goto/services/athena"
 	"github.com/riyanimam/goto/services/autoscaling"
@@ -110,5 +111,6 @@ func builtinServices() []Service {
 		opensearch.New(),
 		servicediscovery.New(),
 		transfer.New(),
+		applicationautoscaling.New(),
 	}
 }
