@@ -38,6 +38,7 @@ import (
 	"github.com/riyanimam/goto/services/kinesis"
 	"github.com/riyanimam/goto/services/kms"
 	"github.com/riyanimam/goto/services/lambda"
+	"github.com/riyanimam/goto/services/mq"
 	"github.com/riyanimam/goto/services/opensearch"
 	"github.com/riyanimam/goto/services/organizations"
 	"github.com/riyanimam/goto/services/rds"
@@ -118,5 +119,6 @@ func builtinServices() []Service {
 		resourcegroupstaggingapi.New(),
 		appsync.New(),
 		kafka.New(),
+		mq.New(),
 	}
 }
