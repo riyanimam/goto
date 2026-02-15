@@ -3,8 +3,9 @@ package awsmock
 import (
 	"github.com/riyanimam/goto/services/acm"
 	"github.com/riyanimam/goto/services/apigateway"
-	"github.com/riyanimam/goto/services/applicationautoscaling"
 	"github.com/riyanimam/goto/services/apigatewayv2"
+	"github.com/riyanimam/goto/services/applicationautoscaling"
+	"github.com/riyanimam/goto/services/appsync"
 	"github.com/riyanimam/goto/services/athena"
 	"github.com/riyanimam/goto/services/autoscaling"
 	"github.com/riyanimam/goto/services/backup"
@@ -114,5 +115,6 @@ func builtinServices() []Service {
 		transfer.New(),
 		applicationautoscaling.New(),
 		resourcegroupstaggingapi.New(),
+		appsync.New(),
 	}
 }
