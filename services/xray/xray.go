@@ -165,13 +165,13 @@ func (s *Service) getTraceSummaries(w http.ResponseWriter, r *http.Request) {
 				"HttpMethod": "GET",
 				"HttpStatus": 200,
 			},
-			"Duration":      0.1,
-			"ResponseTime":  storedAt.Unix(),
-			"HasFault":      false,
-			"HasError":      false,
-			"HasThrottle":   false,
-			"IsPartial":     false,
-			"Revision":      0,
+			"Duration":         0.1,
+			"ResponseTime":     storedAt.Unix(),
+			"HasFault":         false,
+			"HasError":         false,
+			"HasThrottle":      false,
+			"IsPartial":        false,
+			"Revision":         0,
 			"MatchedEventTime": storedAt.Unix(),
 		})
 	}
@@ -181,8 +181,8 @@ func (s *Service) getTraceSummaries(w http.ResponseWriter, r *http.Request) {
 	})
 
 	h.WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"TraceSummaries":    summaries,
-		"ApproximateTime":   time.Now().UTC().Unix(),
+		"TraceSummaries":       summaries,
+		"ApproximateTime":      time.Now().UTC().Unix(),
 		"TracesProcessedCount": len(summaries),
 	})
 }
@@ -241,8 +241,8 @@ func (s *Service) batchGetTraces(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"Traces":                traces,
-		"UnprocessedTraceIds":   unprocessed,
+		"Traces":              traces,
+		"UnprocessedTraceIds": unprocessed,
 	})
 }
 

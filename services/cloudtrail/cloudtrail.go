@@ -267,12 +267,12 @@ func (s *Service) lookupEvents(w http.ResponseWriter, _ map[string]interface{}) 
 
 func trailResp(t *trail) map[string]interface{} {
 	return map[string]interface{}{
-		"Name":                    t.name,
-		"TrailARN":                t.arn,
-		"S3BucketName":            t.s3BucketName,
-		"IsMultiRegionTrail":      t.isMultiRegion,
-		"IsOrganizationTrail":     t.isOrganizationTrail,
-		"HomeRegion":              t.homeRegion,
+		"Name":                     t.name,
+		"TrailARN":                 t.arn,
+		"S3BucketName":             t.s3BucketName,
+		"IsMultiRegionTrail":       t.isMultiRegion,
+		"IsOrganizationTrail":      t.isOrganizationTrail,
+		"HomeRegion":               t.homeRegion,
 		"LogFileValidationEnabled": true,
 	}
 }

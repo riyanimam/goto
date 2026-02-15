@@ -234,11 +234,11 @@ func (s *Service) updateSchedule(w http.ResponseWriter, r *http.Request, path st
 
 func scheduleResp(sched *schedule) map[string]interface{} {
 	resp := map[string]interface{}{
-		"Name":               sched.name,
-		"Arn":                sched.arn,
-		"ScheduleExpression": sched.scheduleExpression,
-		"State":              sched.state,
-		"CreationDate":       float64(sched.created.Unix()),
+		"Name":                 sched.name,
+		"Arn":                  sched.arn,
+		"ScheduleExpression":   sched.scheduleExpression,
+		"State":                sched.state,
+		"CreationDate":         float64(sched.created.Unix()),
 		"LastModificationDate": float64(sched.modified.Unix()),
 	}
 	if sched.target != nil {

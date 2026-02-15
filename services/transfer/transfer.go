@@ -197,10 +197,10 @@ func (s *Service) listServers(w http.ResponseWriter, _ map[string]interface{}) {
 		list = append(list, map[string]interface{}{
 			"ServerId":             srv.id,
 			"Arn":                  srv.arn,
-			"State":               srv.state,
-			"EndpointType":        srv.endpointType,
+			"State":                srv.state,
+			"EndpointType":         srv.endpointType,
 			"IdentityProviderType": srv.identityProviderType,
-			"UserCount":           len(srv.users),
+			"UserCount":            len(srv.users),
 		})
 	}
 	s.mu.RUnlock()
@@ -313,11 +313,11 @@ func serverResp(srv *server) map[string]interface{} {
 	return map[string]interface{}{
 		"ServerId":             srv.id,
 		"Arn":                  srv.arn,
-		"State":               srv.state,
-		"EndpointType":        srv.endpointType,
+		"State":                srv.state,
+		"EndpointType":         srv.endpointType,
 		"IdentityProviderType": srv.identityProviderType,
-		"Protocols":           srv.protocols,
-		"UserCount":           len(srv.users),
+		"Protocols":            srv.protocols,
+		"UserCount":            len(srv.users),
 	}
 }
 

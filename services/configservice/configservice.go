@@ -305,9 +305,9 @@ func (s *Service) putDeliveryChannel(w http.ResponseWriter, params map[string]in
 
 func ruleResp(rule *configRule) map[string]interface{} {
 	resp := map[string]interface{}{
-		"ConfigRuleName": rule.name,
-		"ConfigRuleArn":  rule.arn,
-		"ConfigRuleId":   rule.ruleID,
+		"ConfigRuleName":  rule.name,
+		"ConfigRuleArn":   rule.arn,
+		"ConfigRuleId":    rule.ruleID,
 		"ConfigRuleState": rule.state,
 	}
 	if rule.source != nil {

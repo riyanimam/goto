@@ -298,9 +298,9 @@ func (s *Service) listSteps(w http.ResponseWriter, params map[string]interface{}
 
 func clusterResp(c *cluster) map[string]interface{} {
 	resp := map[string]interface{}{
-		"Id":     c.id,
-		"Name":   c.name,
-		"Status": statusResp(c),
+		"Id":                    c.id,
+		"Name":                  c.name,
+		"Status":                statusResp(c),
 		"Ec2InstanceAttributes": map[string]interface{}{},
 	}
 	if c.releaseLabel != "" {

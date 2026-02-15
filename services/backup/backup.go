@@ -294,11 +294,11 @@ func vaultResp(v *backupVault) map[string]interface{} {
 
 func planResp(p *backupPlan) map[string]interface{} {
 	return map[string]interface{}{
-		"BackupPlanId":  p.id,
+		"BackupPlanId":   p.id,
 		"BackupPlanName": p.name,
-		"BackupPlanArn": p.arn,
-		"VersionId":     p.versionId,
-		"CreationDate":  float64(p.created.Unix()),
+		"BackupPlanArn":  p.arn,
+		"VersionId":      p.versionId,
+		"CreationDate":   float64(p.created.Unix()),
 		"BackupPlan": map[string]interface{}{
 			"BackupPlanName": p.name,
 			"Rules":          p.rules,

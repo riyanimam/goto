@@ -28,10 +28,10 @@ type Service struct {
 }
 
 type identityPool struct {
-	id                    string
-	name                  string
-	allowUnauthenticated  bool
-	created               time.Time
+	id                   string
+	name                 string
+	allowUnauthenticated bool
+	created              time.Time
 }
 
 // New creates a new Cognito Identity mock service.

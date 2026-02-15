@@ -25,10 +25,10 @@ import (
 
 // Service implements the AWS Batch mock.
 type Service struct {
-	mu           sync.RWMutex
-	computeEnvs  map[string]*computeEnvironment
-	jobQueues    map[string]*jobQueue
-	jobs         map[string]*job
+	mu          sync.RWMutex
+	computeEnvs map[string]*computeEnvironment
+	jobQueues   map[string]*jobQueue
+	jobs        map[string]*job
 }
 
 type computeEnvironment struct {
