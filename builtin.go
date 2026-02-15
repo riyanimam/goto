@@ -32,6 +32,7 @@ import (
 	"github.com/riyanimam/goto/services/emr"
 	"github.com/riyanimam/goto/services/eventbridge"
 	"github.com/riyanimam/goto/services/firehose"
+	"github.com/riyanimam/goto/services/fsx"
 	"github.com/riyanimam/goto/services/glue"
 	"github.com/riyanimam/goto/services/iam"
 	"github.com/riyanimam/goto/services/kafka"
@@ -120,5 +121,6 @@ func builtinServices() []Service {
 		appsync.New(),
 		kafka.New(),
 		mq.New(),
+		fsx.New(),
 	}
 }

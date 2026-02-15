@@ -216,6 +216,8 @@ func (m *MockServer) identifyService(r *http.Request) string {
 				return "servicediscovery"
 			case strings.Contains(name, "transferservice"):
 				return "transfer"
+			case strings.Contains(name, "awssimba"):
+				return "fsx"
 			}
 		}
 	}
