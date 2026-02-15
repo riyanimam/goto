@@ -148,6 +148,10 @@ func (m *MockServer) identifyService(r *http.Request) string {
 						return "streams.dynamodb"
 					}
 				}
+				// API Gateway V2 signs as "apigateway" but uses /v2/ URL prefix.
+				if svc == "apigateway" && strings.HasPrefix(r.URL.Path, "/v2/") {
+					return "apigatewayv2"
+				}
 				return svc
 			}
 		}

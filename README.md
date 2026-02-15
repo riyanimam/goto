@@ -20,7 +20,7 @@ that uses the AWS SDK for Go v2 without making any real API calls.
 - **Thread-safe** — safe for parallel tests
 - **Pure Go** — no Python, no Docker, no external processes
 - **AWS SDK v2** — works with `github.com/aws/aws-sdk-go-v2`
-- **32 services** — broad coverage of the most commonly used AWS services
+- **52 services** — broad coverage of the most commonly used AWS services
 
 ## Supported Services
 
@@ -58,6 +58,26 @@ that uses the AWS SDK for Go v2 without making any real API calls.
 | **Firehose** | CreateDeliveryStream, DeleteDeliveryStream, DescribeDeliveryStream, ListDeliveryStreams, PutRecord |
 | **Athena** | StartQueryExecution, GetQueryExecution, GetQueryResults, ListQueryExecutions, CreateWorkGroup, GetWorkGroup, DeleteWorkGroup, ListWorkGroups |
 | **Glue** | CreateDatabase, GetDatabase, DeleteDatabase, GetDatabases, CreateTable, GetTable, DeleteTable, GetTables, CreateCrawler, GetCrawler, DeleteCrawler, StartCrawler, ListCrawlers |
+| **Auto Scaling** | CreateAutoScalingGroup, DescribeAutoScalingGroups, DeleteAutoScalingGroup, UpdateAutoScalingGroup, CreateLaunchConfiguration, DescribeLaunchConfigurations, DeleteLaunchConfiguration, SetDesiredCapacity |
+| **API Gateway** | CreateRestApi, GetRestApi, DeleteRestApi, GetRestApis, CreateResource, GetResources, PutMethod, PutIntegration |
+| **Cognito Identity** | CreateIdentityPool, DescribeIdentityPool, DeleteIdentityPool, ListIdentityPools, UpdateIdentityPool |
+| **Organizations** | CreateOrganization, DescribeOrganization, ListAccounts, CreateAccount, DescribeAccount, CreateOrganizationalUnit, ListOrganizationalUnitsForParent |
+| **DynamoDB Streams** | ListStreams, DescribeStream, GetShardIterator, GetRecords |
+| **EFS** | CreateFileSystem, DescribeFileSystems, DeleteFileSystem, CreateMountTarget, DescribeMountTargets, DeleteMountTarget |
+| **Batch** | CreateComputeEnvironment, DescribeComputeEnvironments, DeleteComputeEnvironment, CreateJobQueue, DescribeJobQueues, DeleteJobQueue, SubmitJob, DescribeJobs |
+| **CodeBuild** | CreateProject, BatchGetProjects, ListProjects, DeleteProject, StartBuild, BatchGetBuilds |
+| **CodePipeline** | CreatePipeline, GetPipeline, DeletePipeline, ListPipelines, UpdatePipeline |
+| **CloudTrail** | CreateTrail, GetTrail, DeleteTrail, DescribeTrails, StartLogging, StopLogging, GetTrailStatus, LookupEvents |
+| **Config** | PutConfigRule, DescribeConfigRules, DeleteConfigRule, PutConfigurationRecorder, DescribeConfigurationRecorders, PutDeliveryChannel |
+| **WAF v2** | CreateWebACL, GetWebACL, DeleteWebACL, ListWebACLs, UpdateWebACL, CreateIPSet, GetIPSet, DeleteIPSet, ListIPSets |
+| **Redshift** | CreateCluster, DescribeClusters, DeleteCluster, ModifyCluster |
+| **EMR** | RunJobFlow, DescribeCluster, ListClusters, TerminateJobFlows, AddJobFlowSteps, ListSteps |
+| **Backup** | CreateBackupVault, DeleteBackupVault, ListBackupVaults, DescribeBackupVault, CreateBackupPlan, GetBackupPlan, DeleteBackupPlan |
+| **EventBridge Scheduler** | CreateSchedule, GetSchedule, DeleteSchedule, ListSchedules, UpdateSchedule |
+| **X-Ray** | PutTraceSegments, GetTraceSummaries, BatchGetTraces, CreateGroup, GetGroup, DeleteGroup, GetGroups |
+| **OpenSearch** | CreateDomain, DescribeDomain, DeleteDomain, ListDomainNames, UpdateDomainConfig |
+| **Service Discovery** | CreatePrivateDnsNamespace, CreateService, GetService, DeleteService, ListServices, RegisterInstance, DeregisterInstance, ListInstances |
+| **Transfer Family** | CreateServer, DescribeServer, DeleteServer, ListServers, CreateUser, DescribeUser, DeleteUser |
 
 ## Installation
 
@@ -482,13 +502,21 @@ mock := awsmock.Start(t, awsmock.WithService(myCustomService))
 ┌──────────────▼───────────────────┐
 │       Service Handlers           │
 │   S3, SQS, STS, DynamoDB, SNS,  │
-│   Secrets Manager, Lambda,       │
-│   CloudWatch Logs, IAM, EC2,     │
-│   Kinesis, EventBridge, SSM,     │
-│   KMS, CloudFormation, ECR,      │
-│   Route 53, ECS, ELBv2, RDS,    │
-│   CloudWatch, Step Functions,    │
-│   ACM, SES                       │
+│   Secrets Manager, Lambda, IAM,  │
+│   CloudWatch Logs, EC2, Kinesis, │
+│   EventBridge, SSM, KMS, ECR,    │
+│   CloudFormation, Route 53, ECS, │
+│   ELBv2, RDS, CloudWatch, ACM,   │
+│   Step Functions, SES, Cognito,  │
+│   API Gateway, CloudFront, EKS,  │
+│   ElastiCache, Firehose, Athena, │
+│   Glue, Auto Scaling, Batch,     │
+│   CodeBuild, CodePipeline, EMR,  │
+│   CloudTrail, Config, WAF v2,    │
+│   Redshift, Backup, Scheduler,   │
+│   X-Ray, OpenSearch, EFS,        │
+│   Organizations, DynamoDB Streams,│
+│   Service Discovery, Transfer    │
 │   (in-memory, thread-safe)       │
 └──────────────────────────────────┘
 ```

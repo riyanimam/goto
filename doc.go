@@ -55,6 +55,26 @@
 //   - Firehose (Kinesis Data Firehose)
 //   - Athena (SQL Query Service)
 //   - Glue (ETL/Data Catalog)
+//   - Auto Scaling
+//   - API Gateway (REST APIs)
+//   - Cognito Identity (Federated Identities)
+//   - Organizations
+//   - DynamoDB Streams
+//   - EFS (Elastic File System)
+//   - Batch
+//   - CodeBuild
+//   - CodePipeline
+//   - CloudTrail
+//   - Config
+//   - WAF v2 (Web Application Firewall)
+//   - Redshift
+//   - EMR (Elastic MapReduce)
+//   - Backup
+//   - EventBridge Scheduler
+//   - X-Ray
+//   - OpenSearch
+//   - Service Discovery (Cloud Map)
+//   - Transfer Family (SFTP/FTPS/FTP)
 //
 // Additional services can be added by implementing the [Service] interface.
 package awsmock

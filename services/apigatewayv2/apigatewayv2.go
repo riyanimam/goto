@@ -62,8 +62,10 @@ func New() *Service {
 	}
 }
 
-// Name returns the service identifier.
-func (s *Service) Name() string { return "apigateway" }
+// Name returns the service identifier. Both API Gateway V1 and V2 sign
+// requests with the "apigateway" credential scope; we use "apigatewayv2" as
+// the internal key so identifyService can disambiguate via the /v2/ URL prefix.
+func (s *Service) Name() string { return "apigatewayv2" }
 
 // Handler returns the HTTP handler for API Gateway V2 requests.
 func (s *Service) Handler() http.Handler {
