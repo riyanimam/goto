@@ -141,7 +141,14 @@ func (m *MockServer) identifyService(r *http.Request) string {
 		if idx := strings.Index(auth, "Credential="); idx >= 0 {
 			parts := strings.Split(auth[idx:], "/")
 			if len(parts) >= 4 {
-				return parts[3]
+				svc := parts[3]
+				// DynamoDB Streams signs as "dynamodb" but needs separate routing.
+				if svc == "dynamodb" {
+					if target := r.Header.Get("X-Amz-Target"); strings.HasPrefix(target, "DynamoDBStreams") {
+						return "streams.dynamodb"
+					}
+				}
+				return svc
 			}
 		}
 	}
@@ -153,6 +160,8 @@ func (m *MockServer) identifyService(r *http.Request) string {
 			name := strings.ToLower(parts[0])
 			// Map known target prefixes to service names.
 			switch {
+			case strings.Contains(name, "dynamodbstreams"):
+				return "streams.dynamodb"
 			case strings.Contains(name, "dynamodb"):
 				return "dynamodb"
 			case strings.Contains(name, "kinesis"):
@@ -175,6 +184,8 @@ func (m *MockServer) identifyService(r *http.Request) string {
 				return "states"
 			case strings.Contains(name, "certificatemanager"):
 				return "acm"
+			case strings.Contains(name, "cognitoidentity"):
+				return "cognito-identity"
 			case strings.Contains(name, "cognitoidp") || strings.Contains(name, "cognito-idp"):
 				return "cognito-idp"
 			case strings.Contains(name, "firehose"):
@@ -183,6 +194,24 @@ func (m *MockServer) identifyService(r *http.Request) string {
 				return "athena"
 			case strings.Contains(name, "awsglue"):
 				return "glue"
+			case strings.Contains(name, "awsorganizations"):
+				return "organizations"
+			case strings.Contains(name, "codebuild"):
+				return "codebuild"
+			case strings.Contains(name, "codepipeline"):
+				return "codepipeline"
+			case strings.Contains(name, "cloudtrail"):
+				return "cloudtrail"
+			case strings.Contains(name, "starlingdovecoteservice"):
+				return "config"
+			case strings.Contains(name, "awswaf"):
+				return "wafv2"
+			case strings.Contains(name, "elasticmapreduce"):
+				return "elasticmapreduce"
+			case strings.Contains(name, "route53autoscaling") || strings.Contains(name, "servicediscovery"):
+				return "servicediscovery"
+			case strings.Contains(name, "transferservice"):
+				return "transfer"
 			}
 		}
 	}

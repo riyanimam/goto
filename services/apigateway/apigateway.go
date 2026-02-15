@@ -394,7 +394,7 @@ func restApiResp(api *restApi) map[string]interface{} {
 		"id":          api.id,
 		"name":        api.name,
 		"description": api.description,
-		"createdDate": api.createdDate.Format(time.RFC3339),
+		"createdDate": api.createdDate.Unix(),
 	}
 }
 
