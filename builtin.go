@@ -40,6 +40,7 @@ import (
 	"github.com/riyanimam/goto/services/organizations"
 	"github.com/riyanimam/goto/services/rds"
 	"github.com/riyanimam/goto/services/redshift"
+	"github.com/riyanimam/goto/services/resourcegroupstaggingapi"
 	"github.com/riyanimam/goto/services/route53"
 	"github.com/riyanimam/goto/services/s3"
 	"github.com/riyanimam/goto/services/scheduler"
@@ -112,5 +113,6 @@ func builtinServices() []Service {
 		servicediscovery.New(),
 		transfer.New(),
 		applicationautoscaling.New(),
+		resourcegroupstaggingapi.New(),
 	}
 }
