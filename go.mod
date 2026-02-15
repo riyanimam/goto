@@ -50,14 +50,34 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.17 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.17 // indirect
+	github.com/aws/aws-sdk-go-v2/service/apigateway v1.38.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.64.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/backup v1.54.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/batch v1.60.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/cloudtrail v1.55.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/codebuild v1.68.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/codepipeline v1.46.17 // indirect
+	github.com/aws/aws-sdk-go-v2/service/cognitoidentity v1.33.18 // indirect
+	github.com/aws/aws-sdk-go-v2/service/configservice v1.61.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.32.10 // indirect
+	github.com/aws/aws-sdk-go-v2/service/efs v1.41.10 // indirect
+	github.com/aws/aws-sdk-go-v2/service/emr v1.57.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.17 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.17 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.17 // indirect
+	github.com/aws/aws-sdk-go-v2/service/opensearch v1.57.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/organizations v1.50.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/redshift v1.62.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/scheduler v1.17.18 // indirect
+	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.39.22 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.30.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.13 // indirect
+	github.com/aws/aws-sdk-go-v2/service/transfer v1.69.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/wafv2 v1.70.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/xray v1.36.17 // indirect
 	github.com/aws/smithy-go v1.24.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 )

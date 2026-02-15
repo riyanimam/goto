@@ -2,22 +2,32 @@ package awsmock
 
 import (
 	"github.com/riyanimam/goto/services/acm"
+	"github.com/riyanimam/goto/services/apigateway"
 	"github.com/riyanimam/goto/services/apigatewayv2"
-	"github.com/riyanimam/goto/services/autoscaling"
 	"github.com/riyanimam/goto/services/athena"
+	"github.com/riyanimam/goto/services/autoscaling"
+	"github.com/riyanimam/goto/services/backup"
+	"github.com/riyanimam/goto/services/batch"
 	"github.com/riyanimam/goto/services/cloudformation"
 	"github.com/riyanimam/goto/services/cloudfront"
+	"github.com/riyanimam/goto/services/cloudtrail"
 	"github.com/riyanimam/goto/services/cloudwatch"
 	"github.com/riyanimam/goto/services/cloudwatchlogs"
+	"github.com/riyanimam/goto/services/codebuild"
+	"github.com/riyanimam/goto/services/codepipeline"
 	"github.com/riyanimam/goto/services/cognitoidentity"
 	"github.com/riyanimam/goto/services/cognitoidp"
+	"github.com/riyanimam/goto/services/configservice"
 	"github.com/riyanimam/goto/services/dynamodb"
+	"github.com/riyanimam/goto/services/dynamodbstreams"
 	"github.com/riyanimam/goto/services/ec2"
 	"github.com/riyanimam/goto/services/ecr"
 	"github.com/riyanimam/goto/services/ecs"
+	"github.com/riyanimam/goto/services/efs"
 	"github.com/riyanimam/goto/services/eks"
 	"github.com/riyanimam/goto/services/elasticache"
 	"github.com/riyanimam/goto/services/elbv2"
+	"github.com/riyanimam/goto/services/emr"
 	"github.com/riyanimam/goto/services/eventbridge"
 	"github.com/riyanimam/goto/services/firehose"
 	"github.com/riyanimam/goto/services/glue"
@@ -25,16 +35,24 @@ import (
 	"github.com/riyanimam/goto/services/kinesis"
 	"github.com/riyanimam/goto/services/kms"
 	"github.com/riyanimam/goto/services/lambda"
+	"github.com/riyanimam/goto/services/opensearch"
+	"github.com/riyanimam/goto/services/organizations"
 	"github.com/riyanimam/goto/services/rds"
+	"github.com/riyanimam/goto/services/redshift"
 	"github.com/riyanimam/goto/services/route53"
 	"github.com/riyanimam/goto/services/s3"
+	"github.com/riyanimam/goto/services/scheduler"
 	"github.com/riyanimam/goto/services/secretsmanager"
+	"github.com/riyanimam/goto/services/servicediscovery"
 	"github.com/riyanimam/goto/services/ses"
 	"github.com/riyanimam/goto/services/sns"
 	"github.com/riyanimam/goto/services/sqs"
 	"github.com/riyanimam/goto/services/ssm"
 	"github.com/riyanimam/goto/services/stepfunctions"
 	"github.com/riyanimam/goto/services/sts"
+	"github.com/riyanimam/goto/services/transfer"
+	"github.com/riyanimam/goto/services/wafv2"
+	"github.com/riyanimam/goto/services/xray"
 )
 
 // builtinServices returns the default set of service mocks.
@@ -74,5 +92,23 @@ func builtinServices() []Service {
 		athena.New(),
 		glue.New(),
 		autoscaling.New(),
+		apigateway.New(),
+		organizations.New(),
+		dynamodbstreams.New(),
+		efs.New(),
+		batch.New(),
+		codebuild.New(),
+		codepipeline.New(),
+		cloudtrail.New(),
+		configservice.New(),
+		wafv2.New(),
+		redshift.New(),
+		emr.New(),
+		backup.New(),
+		scheduler.New(),
+		xray.New(),
+		opensearch.New(),
+		servicediscovery.New(),
+		transfer.New(),
 	}
 }
