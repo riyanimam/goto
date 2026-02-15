@@ -9,6 +9,7 @@ import (
 	"github.com/riyanimam/goto/services/cloudfront"
 	"github.com/riyanimam/goto/services/cloudwatch"
 	"github.com/riyanimam/goto/services/cloudwatchlogs"
+	"github.com/riyanimam/goto/services/cognitoidentity"
 	"github.com/riyanimam/goto/services/cognitoidp"
 	"github.com/riyanimam/goto/services/dynamodb"
 	"github.com/riyanimam/goto/services/ec2"
@@ -64,6 +65,7 @@ func builtinServices() []Service {
 		acm.New(),
 		ses.New(),
 		cognitoidp.New(),
+		cognitoidentity.New(),
 		apigatewayv2.New(),
 		cloudfront.New(),
 		eks.New(),
