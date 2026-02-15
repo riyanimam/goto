@@ -47,6 +47,14 @@
 //   - Step Functions
 //   - ACM (Certificate Manager)
 //   - SES v2 (Simple Email Service)
+//   - Cognito Identity Provider
+//   - API Gateway V2 (HTTP/WebSocket APIs)
+//   - CloudFront (CDN)
+//   - EKS (Elastic Kubernetes Service)
+//   - ElastiCache (Redis/Memcached)
+//   - Firehose (Kinesis Data Firehose)
+//   - Athena (SQL Query Service)
+//   - Glue (ETL/Data Catalog)
 //
 // Additional services can be added by implementing the [Service] interface.
 package awsmock

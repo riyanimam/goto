@@ -175,6 +175,14 @@ func (m *MockServer) identifyService(r *http.Request) string {
 				return "states"
 			case strings.Contains(name, "certificatemanager"):
 				return "acm"
+			case strings.Contains(name, "cognitoidp") || strings.Contains(name, "cognito-idp"):
+				return "cognito-idp"
+			case strings.Contains(name, "firehose"):
+				return "firehose"
+			case strings.Contains(name, "athena"):
+				return "athena"
+			case strings.Contains(name, "awsglue"):
+				return "glue"
 			}
 		}
 	}

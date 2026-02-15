@@ -42,6 +42,14 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.17 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.17 // indirect
+	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.33.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/athena v1.57.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.60.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.58.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/eks v1.80.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/elasticache v1.51.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/firehose v1.42.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/glue v1.137.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.17 // indirect

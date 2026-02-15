@@ -8,21 +8,35 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/acm"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2"
+	"github.com/aws/aws-sdk-go-v2/service/athena"
+	athenatypes "github.com/aws/aws-sdk-go-v2/service/athena/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
+	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	cwtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	cwltypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
+	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	cidptypes "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 	ecstypes "github.com/aws/aws-sdk-go-v2/service/ecs/types"
+	"github.com/aws/aws-sdk-go-v2/service/eks"
+	ekstypes "github.com/aws/aws-sdk-go-v2/service/eks/types"
+	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	elbv2types "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2/types"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 	ebtypes "github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
+	"github.com/aws/aws-sdk-go-v2/service/firehose"
+	firehosetypes "github.com/aws/aws-sdk-go-v2/service/firehose/types"
+	"github.com/aws/aws-sdk-go-v2/service/glue"
+	gluetypes "github.com/aws/aws-sdk-go-v2/service/glue/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
@@ -2529,5 +2543,793 @@ func TestSESEmailOperations(t *testing.T) {
 	}
 	if len(listResp.EmailIdentities) != 0 {
 		t.Errorf("expected 0 identities after delete, got %d", len(listResp.EmailIdentities))
+	}
+}
+
+// TestCognitoUserPoolOperations verifies that the mock Cognito Identity Provider
+// service supports user pool and user management.
+func TestCognitoUserPoolOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := cognitoidentityprovider.NewFromConfig(cfg)
+
+	// Create user pool.
+	createResp, err := client.CreateUserPool(ctx, &cognitoidentityprovider.CreateUserPoolInput{
+		PoolName: aws.String("test-pool"),
+	})
+	if err != nil {
+		t.Fatalf("CreateUserPool: %v", err)
+	}
+	if createResp.UserPool == nil || createResp.UserPool.Id == nil {
+		t.Fatal("expected user pool with ID")
+	}
+	poolID := *createResp.UserPool.Id
+	if *createResp.UserPool.Name != "test-pool" {
+		t.Errorf("expected pool name test-pool, got %s", *createResp.UserPool.Name)
+	}
+
+	// Describe user pool.
+	descResp, err := client.DescribeUserPool(ctx, &cognitoidentityprovider.DescribeUserPoolInput{
+		UserPoolId: aws.String(poolID),
+	})
+	if err != nil {
+		t.Fatalf("DescribeUserPool: %v", err)
+	}
+	if *descResp.UserPool.Name != "test-pool" {
+		t.Errorf("expected pool name test-pool, got %s", *descResp.UserPool.Name)
+	}
+
+	// Create user pool client.
+	clientResp, err := client.CreateUserPoolClient(ctx, &cognitoidentityprovider.CreateUserPoolClientInput{
+		UserPoolId: aws.String(poolID),
+		ClientName: aws.String("test-client"),
+	})
+	if err != nil {
+		t.Fatalf("CreateUserPoolClient: %v", err)
+	}
+	if clientResp.UserPoolClient == nil || clientResp.UserPoolClient.ClientId == nil {
+		t.Fatal("expected client with ID")
+	}
+
+	// Admin create user.
+	userResp, err := client.AdminCreateUser(ctx, &cognitoidentityprovider.AdminCreateUserInput{
+		UserPoolId: aws.String(poolID),
+		Username:   aws.String("testuser"),
+		UserAttributes: []cidptypes.AttributeType{
+			{Name: aws.String("email"), Value: aws.String("test@example.com")},
+		},
+	})
+	if err != nil {
+		t.Fatalf("AdminCreateUser: %v", err)
+	}
+	if *userResp.User.Username != "testuser" {
+		t.Errorf("expected username testuser, got %s", *userResp.User.Username)
+	}
+
+	// Admin get user.
+	getResp, err := client.AdminGetUser(ctx, &cognitoidentityprovider.AdminGetUserInput{
+		UserPoolId: aws.String(poolID),
+		Username:   aws.String("testuser"),
+	})
+	if err != nil {
+		t.Fatalf("AdminGetUser: %v", err)
+	}
+	if *getResp.Username != "testuser" {
+		t.Errorf("expected username testuser, got %s", *getResp.Username)
+	}
+
+	// List users.
+	listResp, err := client.ListUsers(ctx, &cognitoidentityprovider.ListUsersInput{
+		UserPoolId: aws.String(poolID),
+	})
+	if err != nil {
+		t.Fatalf("ListUsers: %v", err)
+	}
+	if len(listResp.Users) != 1 {
+		t.Errorf("expected 1 user, got %d", len(listResp.Users))
+	}
+
+	// Admin delete user.
+	_, err = client.AdminDeleteUser(ctx, &cognitoidentityprovider.AdminDeleteUserInput{
+		UserPoolId: aws.String(poolID),
+		Username:   aws.String("testuser"),
+	})
+	if err != nil {
+		t.Fatalf("AdminDeleteUser: %v", err)
+	}
+
+	// List user pools.
+	poolsResp, err := client.ListUserPools(ctx, &cognitoidentityprovider.ListUserPoolsInput{
+		MaxResults: aws.Int32(10),
+	})
+	if err != nil {
+		t.Fatalf("ListUserPools: %v", err)
+	}
+	if len(poolsResp.UserPools) != 1 {
+		t.Errorf("expected 1 pool, got %d", len(poolsResp.UserPools))
+	}
+
+	// Delete user pool.
+	_, err = client.DeleteUserPool(ctx, &cognitoidentityprovider.DeleteUserPoolInput{
+		UserPoolId: aws.String(poolID),
+	})
+	if err != nil {
+		t.Fatalf("DeleteUserPool: %v", err)
+	}
+
+	// Verify empty.
+	poolsResp, err = client.ListUserPools(ctx, &cognitoidentityprovider.ListUserPoolsInput{
+		MaxResults: aws.Int32(10),
+	})
+	if err != nil {
+		t.Fatalf("ListUserPools after delete: %v", err)
+	}
+	if len(poolsResp.UserPools) != 0 {
+		t.Errorf("expected 0 pools after delete, got %d", len(poolsResp.UserPools))
+	}
+}
+
+// TestAPIGatewayV2Operations verifies that the mock API Gateway V2
+// service supports API, stage, and route management.
+func TestAPIGatewayV2Operations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := apigatewayv2.NewFromConfig(cfg)
+
+	// Create API.
+	createResp, err := client.CreateApi(ctx, &apigatewayv2.CreateApiInput{
+		Name:         aws.String("test-api"),
+		ProtocolType: "HTTP",
+	})
+	if err != nil {
+		t.Fatalf("CreateApi: %v", err)
+	}
+	if createResp.ApiId == nil || *createResp.ApiId == "" {
+		t.Fatal("expected API with ID")
+	}
+	apiID := *createResp.ApiId
+
+	// Get API.
+	getResp, err := client.GetApi(ctx, &apigatewayv2.GetApiInput{
+		ApiId: aws.String(apiID),
+	})
+	if err != nil {
+		t.Fatalf("GetApi: %v", err)
+	}
+	if *getResp.Name != "test-api" {
+		t.Errorf("expected API name test-api, got %s", *getResp.Name)
+	}
+
+	// Create stage.
+	stageResp, err := client.CreateStage(ctx, &apigatewayv2.CreateStageInput{
+		ApiId:     aws.String(apiID),
+		StageName: aws.String("prod"),
+	})
+	if err != nil {
+		t.Fatalf("CreateStage: %v", err)
+	}
+	if *stageResp.StageName != "prod" {
+		t.Errorf("expected stage name prod, got %s", *stageResp.StageName)
+	}
+
+	// Get stages.
+	stagesResp, err := client.GetStages(ctx, &apigatewayv2.GetStagesInput{
+		ApiId: aws.String(apiID),
+	})
+	if err != nil {
+		t.Fatalf("GetStages: %v", err)
+	}
+	if len(stagesResp.Items) != 1 {
+		t.Errorf("expected 1 stage, got %d", len(stagesResp.Items))
+	}
+
+	// Create route.
+	routeResp, err := client.CreateRoute(ctx, &apigatewayv2.CreateRouteInput{
+		ApiId:    aws.String(apiID),
+		RouteKey: aws.String("GET /items"),
+	})
+	if err != nil {
+		t.Fatalf("CreateRoute: %v", err)
+	}
+	if routeResp.RouteId == nil || *routeResp.RouteId == "" {
+		t.Fatal("expected route with ID")
+	}
+
+	// Get routes.
+	routesResp, err := client.GetRoutes(ctx, &apigatewayv2.GetRoutesInput{
+		ApiId: aws.String(apiID),
+	})
+	if err != nil {
+		t.Fatalf("GetRoutes: %v", err)
+	}
+	if len(routesResp.Items) != 1 {
+		t.Errorf("expected 1 route, got %d", len(routesResp.Items))
+	}
+
+	// List APIs.
+	apisResp, err := client.GetApis(ctx, &apigatewayv2.GetApisInput{})
+	if err != nil {
+		t.Fatalf("GetApis: %v", err)
+	}
+	if len(apisResp.Items) != 1 {
+		t.Errorf("expected 1 API, got %d", len(apisResp.Items))
+	}
+
+	// Delete API (cascades stages and routes).
+	_, err = client.DeleteApi(ctx, &apigatewayv2.DeleteApiInput{
+		ApiId: aws.String(apiID),
+	})
+	if err != nil {
+		t.Fatalf("DeleteApi: %v", err)
+	}
+
+	// Verify empty.
+	apisResp, err = client.GetApis(ctx, &apigatewayv2.GetApisInput{})
+	if err != nil {
+		t.Fatalf("GetApis after delete: %v", err)
+	}
+	if len(apisResp.Items) != 0 {
+		t.Errorf("expected 0 APIs after delete, got %d", len(apisResp.Items))
+	}
+}
+
+// TestCloudFrontDistributionOperations verifies that the mock CloudFront
+// service supports distribution CRUD operations.
+func TestCloudFrontDistributionOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := cloudfront.NewFromConfig(cfg)
+
+	// Create distribution.
+	createResp, err := client.CreateDistribution(ctx, &cloudfront.CreateDistributionInput{
+		DistributionConfig: &cftypes.DistributionConfig{
+			CallerReference: aws.String("test-ref-1"),
+			Comment:         aws.String("test distribution"),
+			Enabled:         aws.Bool(true),
+			Origins: &cftypes.Origins{
+				Quantity: aws.Int32(1),
+				Items: []cftypes.Origin{
+					{
+						DomainName: aws.String("mybucket.s3.amazonaws.com"),
+						Id:         aws.String("S3Origin"),
+					},
+				},
+			},
+			DefaultCacheBehavior: &cftypes.DefaultCacheBehavior{
+				TargetOriginId:       aws.String("S3Origin"),
+				ViewerProtocolPolicy: cftypes.ViewerProtocolPolicyAllowAll,
+				ForwardedValues: &cftypes.ForwardedValues{
+					QueryString: aws.Bool(false),
+					Cookies: &cftypes.CookiePreference{
+						Forward: cftypes.ItemSelectionNone,
+					},
+				},
+				MinTTL: aws.Int64(0),
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDistribution: %v", err)
+	}
+	if createResp.Distribution == nil || createResp.Distribution.Id == nil {
+		t.Fatal("expected distribution with ID")
+	}
+	distID := *createResp.Distribution.Id
+
+	// Get distribution.
+	getResp, err := client.GetDistribution(ctx, &cloudfront.GetDistributionInput{
+		Id: aws.String(distID),
+	})
+	if err != nil {
+		t.Fatalf("GetDistribution: %v", err)
+	}
+	if *getResp.Distribution.Id != distID {
+		t.Errorf("expected dist ID %s, got %s", distID, *getResp.Distribution.Id)
+	}
+
+	// List distributions.
+	listResp, err := client.ListDistributions(ctx, &cloudfront.ListDistributionsInput{})
+	if err != nil {
+		t.Fatalf("ListDistributions: %v", err)
+	}
+	if listResp.DistributionList == nil || len(listResp.DistributionList.Items) != 1 {
+		t.Errorf("expected 1 distribution in list")
+	}
+
+	// Delete distribution.
+	_, err = client.DeleteDistribution(ctx, &cloudfront.DeleteDistributionInput{
+		Id:      aws.String(distID),
+		IfMatch: getResp.ETag,
+	})
+	if err != nil {
+		t.Fatalf("DeleteDistribution: %v", err)
+	}
+
+	// Verify empty.
+	listResp, err = client.ListDistributions(ctx, &cloudfront.ListDistributionsInput{})
+	if err != nil {
+		t.Fatalf("ListDistributions after delete: %v", err)
+	}
+	if listResp.DistributionList != nil && len(listResp.DistributionList.Items) != 0 {
+		t.Errorf("expected 0 distributions after delete, got %d", len(listResp.DistributionList.Items))
+	}
+}
+
+// TestEKSClusterOperations verifies that the mock EKS service supports
+// cluster and nodegroup management.
+func TestEKSClusterOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := eks.NewFromConfig(cfg)
+
+	// Create cluster.
+	createResp, err := client.CreateCluster(ctx, &eks.CreateClusterInput{
+		Name:    aws.String("test-cluster"),
+		Version: aws.String("1.29"),
+		RoleArn: aws.String("arn:aws:iam::123456789012:role/eks-role"),
+		ResourcesVpcConfig: &ekstypes.VpcConfigRequest{
+			SubnetIds: []string{"subnet-123"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+	if createResp.Cluster == nil || *createResp.Cluster.Name != "test-cluster" {
+		t.Fatal("expected cluster with name test-cluster")
+	}
+
+	// Describe cluster.
+	descResp, err := client.DescribeCluster(ctx, &eks.DescribeClusterInput{
+		Name: aws.String("test-cluster"),
+	})
+	if err != nil {
+		t.Fatalf("DescribeCluster: %v", err)
+	}
+	if *descResp.Cluster.Version != "1.29" {
+		t.Errorf("expected version 1.29, got %s", *descResp.Cluster.Version)
+	}
+
+	// Create nodegroup.
+	ngResp, err := client.CreateNodegroup(ctx, &eks.CreateNodegroupInput{
+		ClusterName:   aws.String("test-cluster"),
+		NodegroupName: aws.String("test-ng"),
+		NodeRole:      aws.String("arn:aws:iam::123456789012:role/node-role"),
+		Subnets:       []string{"subnet-123"},
+	})
+	if err != nil {
+		t.Fatalf("CreateNodegroup: %v", err)
+	}
+	if *ngResp.Nodegroup.NodegroupName != "test-ng" {
+		t.Errorf("expected nodegroup name test-ng, got %s", *ngResp.Nodegroup.NodegroupName)
+	}
+
+	// List nodegroups.
+	ngListResp, err := client.ListNodegroups(ctx, &eks.ListNodegroupsInput{
+		ClusterName: aws.String("test-cluster"),
+	})
+	if err != nil {
+		t.Fatalf("ListNodegroups: %v", err)
+	}
+	if len(ngListResp.Nodegroups) != 1 {
+		t.Errorf("expected 1 nodegroup, got %d", len(ngListResp.Nodegroups))
+	}
+
+	// Delete nodegroup.
+	_, err = client.DeleteNodegroup(ctx, &eks.DeleteNodegroupInput{
+		ClusterName:   aws.String("test-cluster"),
+		NodegroupName: aws.String("test-ng"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteNodegroup: %v", err)
+	}
+
+	// List clusters.
+	clustersResp, err := client.ListClusters(ctx, &eks.ListClustersInput{})
+	if err != nil {
+		t.Fatalf("ListClusters: %v", err)
+	}
+	if len(clustersResp.Clusters) != 1 {
+		t.Errorf("expected 1 cluster, got %d", len(clustersResp.Clusters))
+	}
+
+	// Delete cluster.
+	_, err = client.DeleteCluster(ctx, &eks.DeleteClusterInput{
+		Name: aws.String("test-cluster"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteCluster: %v", err)
+	}
+
+	// Verify empty.
+	clustersResp, err = client.ListClusters(ctx, &eks.ListClustersInput{})
+	if err != nil {
+		t.Fatalf("ListClusters after delete: %v", err)
+	}
+	if len(clustersResp.Clusters) != 0 {
+		t.Errorf("expected 0 clusters after delete, got %d", len(clustersResp.Clusters))
+	}
+}
+
+// TestElastiCacheClusterOperations verifies that the mock ElastiCache
+// service supports cache cluster CRUD operations.
+func TestElastiCacheClusterOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := elasticache.NewFromConfig(cfg)
+
+	// Create cache cluster.
+	createResp, err := client.CreateCacheCluster(ctx, &elasticache.CreateCacheClusterInput{
+		CacheClusterId: aws.String("test-cache"),
+		Engine:         aws.String("redis"),
+		CacheNodeType:  aws.String("cache.t3.micro"),
+		NumCacheNodes:  aws.Int32(1),
+	})
+	if err != nil {
+		t.Fatalf("CreateCacheCluster: %v", err)
+	}
+	if createResp.CacheCluster == nil || *createResp.CacheCluster.CacheClusterId != "test-cache" {
+		t.Fatal("expected cache cluster with ID test-cache")
+	}
+
+	// Describe cache clusters.
+	descResp, err := client.DescribeCacheClusters(ctx, &elasticache.DescribeCacheClustersInput{
+		CacheClusterId: aws.String("test-cache"),
+	})
+	if err != nil {
+		t.Fatalf("DescribeCacheClusters: %v", err)
+	}
+	if len(descResp.CacheClusters) != 1 {
+		t.Fatalf("expected 1 cluster, got %d", len(descResp.CacheClusters))
+	}
+	if *descResp.CacheClusters[0].Engine != "redis" {
+		t.Errorf("expected engine redis, got %s", *descResp.CacheClusters[0].Engine)
+	}
+
+	// Delete cache cluster.
+	_, err = client.DeleteCacheCluster(ctx, &elasticache.DeleteCacheClusterInput{
+		CacheClusterId: aws.String("test-cache"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteCacheCluster: %v", err)
+	}
+
+	// Verify empty.
+	descResp, err = client.DescribeCacheClusters(ctx, &elasticache.DescribeCacheClustersInput{})
+	if err != nil {
+		t.Fatalf("DescribeCacheClusters after delete: %v", err)
+	}
+	if len(descResp.CacheClusters) != 0 {
+		t.Errorf("expected 0 clusters after delete, got %d", len(descResp.CacheClusters))
+	}
+}
+
+// TestFirehoseDeliveryStreamOperations verifies that the mock Firehose
+// service supports delivery stream management and record delivery.
+func TestFirehoseDeliveryStreamOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := firehose.NewFromConfig(cfg)
+
+	// Create delivery stream.
+	createResp, err := client.CreateDeliveryStream(ctx, &firehose.CreateDeliveryStreamInput{
+		DeliveryStreamName: aws.String("test-stream"),
+	})
+	if err != nil {
+		t.Fatalf("CreateDeliveryStream: %v", err)
+	}
+	if createResp.DeliveryStreamARN == nil || *createResp.DeliveryStreamARN == "" {
+		t.Fatal("expected delivery stream ARN")
+	}
+
+	// Describe delivery stream.
+	descResp, err := client.DescribeDeliveryStream(ctx, &firehose.DescribeDeliveryStreamInput{
+		DeliveryStreamName: aws.String("test-stream"),
+	})
+	if err != nil {
+		t.Fatalf("DescribeDeliveryStream: %v", err)
+	}
+	if *descResp.DeliveryStreamDescription.DeliveryStreamName != "test-stream" {
+		t.Errorf("expected stream name test-stream, got %s",
+			*descResp.DeliveryStreamDescription.DeliveryStreamName)
+	}
+
+	// Put record.
+	putResp, err := client.PutRecord(ctx, &firehose.PutRecordInput{
+		DeliveryStreamName: aws.String("test-stream"),
+		Record: &firehosetypes.Record{
+			Data: []byte("hello world"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("PutRecord: %v", err)
+	}
+	if putResp.RecordId == nil || *putResp.RecordId == "" {
+		t.Error("expected non-empty RecordId")
+	}
+
+	// List delivery streams.
+	listResp, err := client.ListDeliveryStreams(ctx, &firehose.ListDeliveryStreamsInput{})
+	if err != nil {
+		t.Fatalf("ListDeliveryStreams: %v", err)
+	}
+	if len(listResp.DeliveryStreamNames) != 1 {
+		t.Errorf("expected 1 stream, got %d", len(listResp.DeliveryStreamNames))
+	}
+
+	// Delete delivery stream.
+	_, err = client.DeleteDeliveryStream(ctx, &firehose.DeleteDeliveryStreamInput{
+		DeliveryStreamName: aws.String("test-stream"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteDeliveryStream: %v", err)
+	}
+
+	// Verify empty.
+	listResp, err = client.ListDeliveryStreams(ctx, &firehose.ListDeliveryStreamsInput{})
+	if err != nil {
+		t.Fatalf("ListDeliveryStreams after delete: %v", err)
+	}
+	if len(listResp.DeliveryStreamNames) != 0 {
+		t.Errorf("expected 0 streams after delete, got %d", len(listResp.DeliveryStreamNames))
+	}
+}
+
+// TestAthenaQueryOperations verifies that the mock Athena
+// service supports query execution and workgroup management.
+func TestAthenaQueryOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := athena.NewFromConfig(cfg)
+
+	// Create workgroup.
+	_, err = client.CreateWorkGroup(ctx, &athena.CreateWorkGroupInput{
+		Name:        aws.String("test-wg"),
+		Description: aws.String("test workgroup"),
+	})
+	if err != nil {
+		t.Fatalf("CreateWorkGroup: %v", err)
+	}
+
+	// List workgroups.
+	wgResp, err := client.ListWorkGroups(ctx, &athena.ListWorkGroupsInput{})
+	if err != nil {
+		t.Fatalf("ListWorkGroups: %v", err)
+	}
+	if len(wgResp.WorkGroups) < 2 { // primary + test-wg
+		t.Errorf("expected at least 2 workgroups, got %d", len(wgResp.WorkGroups))
+	}
+
+	// Start query execution.
+	startResp, err := client.StartQueryExecution(ctx, &athena.StartQueryExecutionInput{
+		QueryString: aws.String("SELECT 1"),
+		ResultConfiguration: &athenatypes.ResultConfiguration{
+			OutputLocation: aws.String("s3://test-bucket/results/"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("StartQueryExecution: %v", err)
+	}
+	if startResp.QueryExecutionId == nil || *startResp.QueryExecutionId == "" {
+		t.Fatal("expected query execution ID")
+	}
+	execID := *startResp.QueryExecutionId
+
+	// Get query execution.
+	getResp, err := client.GetQueryExecution(ctx, &athena.GetQueryExecutionInput{
+		QueryExecutionId: aws.String(execID),
+	})
+	if err != nil {
+		t.Fatalf("GetQueryExecution: %v", err)
+	}
+	if *getResp.QueryExecution.Query != "SELECT 1" {
+		t.Errorf("expected query 'SELECT 1', got %s", *getResp.QueryExecution.Query)
+	}
+
+	// Get query results.
+	resultsResp, err := client.GetQueryResults(ctx, &athena.GetQueryResultsInput{
+		QueryExecutionId: aws.String(execID),
+	})
+	if err != nil {
+		t.Fatalf("GetQueryResults: %v", err)
+	}
+	if resultsResp.ResultSet == nil {
+		t.Error("expected result set")
+	}
+
+	// List query executions.
+	listResp, err := client.ListQueryExecutions(ctx, &athena.ListQueryExecutionsInput{})
+	if err != nil {
+		t.Fatalf("ListQueryExecutions: %v", err)
+	}
+	if len(listResp.QueryExecutionIds) != 1 {
+		t.Errorf("expected 1 query execution, got %d", len(listResp.QueryExecutionIds))
+	}
+
+	// Delete workgroup.
+	_, err = client.DeleteWorkGroup(ctx, &athena.DeleteWorkGroupInput{
+		WorkGroup: aws.String("test-wg"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteWorkGroup: %v", err)
+	}
+}
+
+// TestGlueDatabaseAndTableOperations verifies that the mock Glue
+// service supports database, table, and crawler management.
+func TestGlueDatabaseAndTableOperations(t *testing.T) {
+	mock := awsmock.Start(t)
+	ctx := context.Background()
+
+	cfg, err := mock.AWSConfig(ctx)
+	if err != nil {
+		t.Fatalf("AWSConfig: %v", err)
+	}
+
+	client := glue.NewFromConfig(cfg)
+
+	// Create database.
+	_, err = client.CreateDatabase(ctx, &glue.CreateDatabaseInput{
+		DatabaseInput: &gluetypes.DatabaseInput{
+			Name:        aws.String("test-db"),
+			Description: aws.String("test database"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDatabase: %v", err)
+	}
+
+	// Get database.
+	dbResp, err := client.GetDatabase(ctx, &glue.GetDatabaseInput{
+		Name: aws.String("test-db"),
+	})
+	if err != nil {
+		t.Fatalf("GetDatabase: %v", err)
+	}
+	if *dbResp.Database.Name != "test-db" {
+		t.Errorf("expected database name test-db, got %s", *dbResp.Database.Name)
+	}
+
+	// Create table.
+	_, err = client.CreateTable(ctx, &glue.CreateTableInput{
+		DatabaseName: aws.String("test-db"),
+		TableInput: &gluetypes.TableInput{
+			Name:      aws.String("test-table"),
+			TableType: aws.String("EXTERNAL_TABLE"),
+			StorageDescriptor: &gluetypes.StorageDescriptor{
+				Location: aws.String("s3://bucket/prefix/"),
+				Columns: []gluetypes.Column{
+					{Name: aws.String("id"), Type: aws.String("int")},
+					{Name: aws.String("name"), Type: aws.String("string")},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateTable: %v", err)
+	}
+
+	// Get table.
+	tableResp, err := client.GetTable(ctx, &glue.GetTableInput{
+		DatabaseName: aws.String("test-db"),
+		Name:         aws.String("test-table"),
+	})
+	if err != nil {
+		t.Fatalf("GetTable: %v", err)
+	}
+	if *tableResp.Table.Name != "test-table" {
+		t.Errorf("expected table name test-table, got %s", *tableResp.Table.Name)
+	}
+
+	// Get tables.
+	tablesResp, err := client.GetTables(ctx, &glue.GetTablesInput{
+		DatabaseName: aws.String("test-db"),
+	})
+	if err != nil {
+		t.Fatalf("GetTables: %v", err)
+	}
+	if len(tablesResp.TableList) != 1 {
+		t.Errorf("expected 1 table, got %d", len(tablesResp.TableList))
+	}
+
+	// Create crawler.
+	_, err = client.CreateCrawler(ctx, &glue.CreateCrawlerInput{
+		Name:         aws.String("test-crawler"),
+		Role:         aws.String("arn:aws:iam::123456789012:role/glue-role"),
+		DatabaseName: aws.String("test-db"),
+		Targets: &gluetypes.CrawlerTargets{
+			S3Targets: []gluetypes.S3Target{
+				{Path: aws.String("s3://bucket/prefix/")},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateCrawler: %v", err)
+	}
+
+	// Get crawler.
+	crawlerResp, err := client.GetCrawler(ctx, &glue.GetCrawlerInput{
+		Name: aws.String("test-crawler"),
+	})
+	if err != nil {
+		t.Fatalf("GetCrawler: %v", err)
+	}
+	if *crawlerResp.Crawler.Name != "test-crawler" {
+		t.Errorf("expected crawler name test-crawler, got %s", *crawlerResp.Crawler.Name)
+	}
+
+	// Delete table.
+	_, err = client.DeleteTable(ctx, &glue.DeleteTableInput{
+		DatabaseName: aws.String("test-db"),
+		Name:         aws.String("test-table"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteTable: %v", err)
+	}
+
+	// Delete crawler.
+	_, err = client.DeleteCrawler(ctx, &glue.DeleteCrawlerInput{
+		Name: aws.String("test-crawler"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteCrawler: %v", err)
+	}
+
+	// Delete database.
+	_, err = client.DeleteDatabase(ctx, &glue.DeleteDatabaseInput{
+		Name: aws.String("test-db"),
+	})
+	if err != nil {
+		t.Fatalf("DeleteDatabase: %v", err)
+	}
+
+	// Verify empty.
+	dbsResp, err := client.GetDatabases(ctx, &glue.GetDatabasesInput{})
+	if err != nil {
+		t.Fatalf("GetDatabases after delete: %v", err)
+	}
+	if len(dbsResp.DatabaseList) != 0 {
+		t.Errorf("expected 0 databases after delete, got %d", len(dbsResp.DatabaseList))
 	}
 }

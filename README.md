@@ -20,7 +20,7 @@ that uses the AWS SDK for Go v2 without making any real API calls.
 - **Thread-safe** — safe for parallel tests
 - **Pure Go** — no Python, no Docker, no external processes
 - **AWS SDK v2** — works with `github.com/aws/aws-sdk-go-v2`
-- **24 services** — broad coverage of the most commonly used AWS services
+- **32 services** — broad coverage of the most commonly used AWS services
 
 ## Supported Services
 
@@ -50,6 +50,14 @@ that uses the AWS SDK for Go v2 without making any real API calls.
 | **Step Functions** | CreateStateMachine, DeleteStateMachine, DescribeStateMachine, ListStateMachines, StartExecution, DescribeExecution, ListExecutions, StopExecution |
 | **ACM** | RequestCertificate, DescribeCertificate, ListCertificates, DeleteCertificate |
 | **SES v2** | CreateEmailIdentity, GetEmailIdentity, ListEmailIdentities, SendEmail, DeleteEmailIdentity |
+| **Cognito Identity Provider** | CreateUserPool, DescribeUserPool, DeleteUserPool, ListUserPools, CreateUserPoolClient, AdminCreateUser, AdminGetUser, AdminDeleteUser, ListUsers |
+| **API Gateway V2** | CreateApi, GetApi, DeleteApi, GetApis, CreateStage, GetStages, DeleteStage, CreateRoute, GetRoutes, DeleteRoute |
+| **CloudFront** | CreateDistribution, GetDistribution, DeleteDistribution, ListDistributions, UpdateDistribution |
+| **EKS** | CreateCluster, DescribeCluster, DeleteCluster, ListClusters, CreateNodegroup, DescribeNodegroup, DeleteNodegroup, ListNodegroups |
+| **ElastiCache** | CreateCacheCluster, DeleteCacheCluster, DescribeCacheClusters, ModifyCacheCluster, CreateReplicationGroup, DeleteReplicationGroup, DescribeReplicationGroups |
+| **Firehose** | CreateDeliveryStream, DeleteDeliveryStream, DescribeDeliveryStream, ListDeliveryStreams, PutRecord |
+| **Athena** | StartQueryExecution, GetQueryExecution, GetQueryResults, ListQueryExecutions, CreateWorkGroup, GetWorkGroup, DeleteWorkGroup, ListWorkGroups |
+| **Glue** | CreateDatabase, GetDatabase, DeleteDatabase, GetDatabases, CreateTable, GetTable, DeleteTable, GetTables, CreateCrawler, GetCrawler, DeleteCrawler, StartCrawler, ListCrawlers |
 
 ## Installation
 

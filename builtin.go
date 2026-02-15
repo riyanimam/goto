@@ -2,15 +2,23 @@ package awsmock
 
 import (
 	"github.com/riyanimam/goto/services/acm"
+	"github.com/riyanimam/goto/services/apigatewayv2"
+	"github.com/riyanimam/goto/services/athena"
 	"github.com/riyanimam/goto/services/cloudformation"
+	"github.com/riyanimam/goto/services/cloudfront"
 	"github.com/riyanimam/goto/services/cloudwatch"
 	"github.com/riyanimam/goto/services/cloudwatchlogs"
+	"github.com/riyanimam/goto/services/cognitoidp"
 	"github.com/riyanimam/goto/services/dynamodb"
 	"github.com/riyanimam/goto/services/ec2"
 	"github.com/riyanimam/goto/services/ecr"
 	"github.com/riyanimam/goto/services/ecs"
+	"github.com/riyanimam/goto/services/eks"
+	"github.com/riyanimam/goto/services/elasticache"
 	"github.com/riyanimam/goto/services/elbv2"
 	"github.com/riyanimam/goto/services/eventbridge"
+	"github.com/riyanimam/goto/services/firehose"
+	"github.com/riyanimam/goto/services/glue"
 	"github.com/riyanimam/goto/services/iam"
 	"github.com/riyanimam/goto/services/kinesis"
 	"github.com/riyanimam/goto/services/kms"
@@ -54,5 +62,13 @@ func builtinServices() []Service {
 		stepfunctions.New(),
 		acm.New(),
 		ses.New(),
+		cognitoidp.New(),
+		apigatewayv2.New(),
+		cloudfront.New(),
+		eks.New(),
+		elasticache.New(),
+		firehose.New(),
+		athena.New(),
+		glue.New(),
 	}
 }
